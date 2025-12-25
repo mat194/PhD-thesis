@@ -1,0 +1,8 @@
+# Abbreviations
+
+|       |                                   |
+|-------|-----------------------------------|
+| MIPD  | Model informed presion dosing     |
+| PK/PD | Pharmacokinetics/Pharmacodynamics |
+| TDM   | Therapeutic drug monitoring       |
+|       |                                   |
