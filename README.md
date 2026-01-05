@@ -86,4 +86,4 @@ Some documents in this repository are written in **Quarto**. To render them, fol
    quarto render .
    ```
 This will generate the output files (HTML, PDF, etc.) in the same directories as the source files.
----
+
