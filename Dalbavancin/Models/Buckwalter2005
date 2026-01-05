@@ -1,0 +1,40 @@
+ # To be ereased, since the Carrothers is the updated version
+  Buckwalter2005 = list(
+    ppk_model = rxode2::rxode2({
+      AUC(0) <- 0
+      centr(0) <- 0
+      periph(0) <- 0
+      Cl <- (THETA_Cl + THETA_BSA_CL * (BSA - 2.05) + THETA_CLCR_CL * (CLCR - 120.6)) * exp(ETA_Cl)
+      V1 <- (THETA_V1 + THETA_BSA_V1 * (BSA - 2.05)) * exp(ETA_V1)
+      V2 <- THETA_V2 * exp(ETA_V2)
+      Q  <- THETA_Q  * exp(ETA_Q)
+      ke   <- Cl / V1
+      k12  <- Q / V1
+      k21  <- Q / V2
+      Cc <- centr / V1
+      Cp <- periph / V2
+      d / dt(centr)  <- -ke * centr - k12 * centr + k21 * periph
+      d / dt(periph) <- +k12 * centr - k21 * periph
+      d / dt(AUC)    <- Cc
+    }),
+    
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_Cl      = 0.0571,
+      THETA_BSA_CL  = 0.0109,
+      THETA_CLCR_CL = 0.000128,
+      THETA_V1      = 4.15,
+      THETA_BSA_V1  = 2.70,
+      THETA_Q       = 0.476,
+      THETA_V2      = 11.4
+    ),
+    covariates = c("BSA", "CLCR"),
+    omega = lotri::lotri({
+      ETA_Cl + ETA_V1 + ETA_Q + ETA_V2 ~
+        c(log((18.0 / 100) ^ 2 + 1), 0, log((24.5 / 100) ^ 2 + 1), 0, 0, log((86.3 / 100) ^ 2 + 1), 0, 0, 0, log((29.6 / 100) ^ 2 + 1))
+    }),
+    sigma = c(additive_a = 0, proportional_b = 0.242)
+  ),
