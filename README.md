@@ -2,7 +2,7 @@
 
 This repository contains the code, analyses, and applications developed as part of a **PhD thesis focused on pharmacokinetic/pharmacodynamic (PK/PD) modeling**, with a particular emphasis on **therapeutic drug monitoring (TDM)** and **model-informed precision dosing (MIPD)** in clinical settings.
 
-The work includes PK/PD analyses, supporting utilities, protocols, and Shiny applications related to **dalbavancin** and **vancomycin**, developed in R.
+The work includes PK/PD analyses, supporting utilities, protocols, and Shiny applications related several antibiotics, developed in R.
 
 ---
 
@@ -58,7 +58,8 @@ This is particularly important for the long-term PhD research projects and the m
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/mat194/PhD-thesis.git
+cd PhD-thesis
 ```
 ### 2. Restore the R environment
 
