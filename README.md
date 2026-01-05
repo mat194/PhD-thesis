@@ -7,6 +7,7 @@ The work includes PK/PD analyses, supporting utilities, protocols, and Shiny app
 ---
 
 ## Repository Structure
+
 ```bash
 ├── Dalbavancin/          # PK/PD analyses and Shiny apps related to dalbavancin
 ├── Vancomycin/           # PK/PD analyses and tools related to vancomycin
@@ -72,3 +73,17 @@ renv::restore()
 This will:
 - Install all required packages
 - Use the exact versions specified in `renv.lock`
+
+---
+
+## How to render quarto documents
+
+Some documents in this repository are written in **Quarto**. To render them, follow these steps:
+1. Install the Quarto CLI from https://quarto.org/docs/get-started/
+2. Open a terminal in the project directory
+3. Run the following command to render all Quarto documents:
+   ```bash
+   quarto render .
+   ```
+This will generate the output files (HTML, PDF, etc.) in the same directories as the source files.
+---
