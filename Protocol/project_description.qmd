@@ -1,0 +1,146 @@
+# Overall Objectives and Research Questions
+
+## Primary Objective
+
+To develop, validate, and implement PK/PD models derived from the published literature into clinically usable MIPD tools.
+
+## Secondary Objectives
+
+-   Conduct systematic and repeatable literature reviews of population PK/PD models for selected antimicrobial and antiviral agents.
+-   Reconstruct and harmonize published models into a reproducible computational framework.
+-   Perform external validation using real-world clinical data (e.g., TDM datasets) to assess predictive performance and clinical plausibility.
+-   Develop Shiny-based decision support tools implementing the validated models for simulation, Bayesian forecasting, and target attainment evaluation.
+-   Establish a framework for periodic evidence updating, enabling the inclusion of newly published models and emerging agents (e.g., rezafungin, cabotegravir).
+
+### Literature Search Strategy
+
+Systematic searches will be performed in PubMed/MEDLINE and Embase to identify parametric population pharmacokinetic (popPK) models for the selected agents. Searches will be adapted to each database’s syntax and controlled vocabulary when applicable. The strategy will focus on retrieving studies that report parametric nonlinear mixed-effects models (e.g., NONMEM-style approaches).
+
+The methodological search block described below will be applied consistently across all antibiotics.
+
+***Pubmed***
+
+```{r}
+library(glue)
+glue::glue("population pharmacokinetic OR population pharmacokinetics OR popPK OR nonlinear mixed effects OR non-linear mixed effects OR pharmacometric*")
+```
+
+***Embase***
+
+```{r}
+glue::glue("population pharmacokinetic OR population pharmacokinetics OR poppk OR nonlinear mixed effects OR non-linear mixed effects OR pharmacometric*")
+```
+
+This methodological block will be combined with drug-specific terms to generate individual search strategies for each antibiotic of interest, including:
+
+-   Dalbavancin
+-   Vancomycin
+-   Piperacillin/tazobactam
+-   Ceftazidime
+-   Cefepime
+-   Meropenem
+
+Each antibiotic will therefore be associated with its own dedicated search.
+
+### Model Construction
+
+For each antibiotic identified through the systematic literature review, published parametric population PK/PD models will be reconstructed using a standardized and reproducible computational workflow. Model reconstruction will be based exclusively on information reported in the original publications, including structural model definitions, parameter estimates, interindividual variability terms, residual error models, and covariate relationships.
+
+Published models will be translated into a common modeling framework using R-based tools. Here is an example of a published dalbavancin model [@cojutti2022] structure written in `rxode2` syntax [@wang2023].
+
+The model is a two-compartment parametric model with first-order elimination, incorporating covariate effect of  estimated glomerular filtration rate, calculated using the CKD-EPI formula. It was developed using data from 15 critically ill adult patients with bloodstream infections or endocarditis, with serial plasma samples collected up to 21 days post-infusion.
+
+```{r}
+#| echo: true
+#| eval: false
+
+ Cojutti2022 <- list(
+  ppk_model = rxode2::rxode2({
+    AUC(0) <- 0          #  AUC at time 0
+    centr(0) <- 0        #  Central compartment
+    periph(0) <- 0       #  Peripheral compartment
+# Typical clearance including normalized eGFR as a covariate
+    TVCl <- THETA_Cl * (eGFR / 93)^0.0043   
+# Central volume of distribution with interindividual variability
+    V1 <- THETA_V1 * exp(ETA_V1)
+# Peripheral volume of distribution
+    V2 <- THETA_V2 * exp(ETA_V2)  
+# Intercompartmental clearance
+    Q  <- THETA_Q  * exp(ETA_Q) 
+# Individual clearance incorporating both covariate and random effect
+    Cl <- TVCl     * exp(ETA_Cl)            
+# Elimination rate constant
+    ke  <- Cl / V1 
+# Distribution rate from central to peripheral compartment
+    k12 <- Q  / V1   
+# Redistribution rate from peripheral to central compartment
+    k21 <- Q  / V2                          
+# Central compartment concentration
+    Cc <- centr  / V1
+# Peripheral compartment concentration
+    Cp <- periph / V2                       
+# Differential equation describing compartments kinetics
+    d/dt(centr)  <- -ke * centr - k12 * centr + k21 * periph 
+    d/dt(periph) <-  k12 * centr - k21 * periph                
+    d/dt(AUC) <- Cc                         #
+  }),
+# Combined additive and proportional residual error model
+  error_model = function(f, sigma) {        
+    sigma[1] + sigma[2] * f
+  },
+# Fixed-effect parameters
+  theta = c(                                 
+    THETA_Cl = 0.029,
+    THETA_V1 = 6.14,
+    THETA_V2 = 9.52,
+    THETA_Q  = 0.026
+  ),                                        
+# Model covariates required for simulation and estimation
+  covariates = c("eGFR"),                   
+# Interindividual variability structure
+  omega = lotri::lotri({                     
+    ETA_Cl + ETA_V1 + ETA_V2 + ETA_Q ~
+      c(0.0654, 0, 0.0255, 0, 0, 0.1213, 0, 0, 0, 0.2063)
+  }),
+# Residual variability parameters
+  sigma = c(                                 #
+    additive_a     = 0,
+    proportional_b = 0.3392          
+  )                                       
+)
+```
+
+The `rxode2` model implements the following items:
+
+-   structural population model component with the individual model (*i.e.* the model of inter-individual variability) and the covariates.
+
+-   A function of the residual error model
+
+-   A character vector of the covariates of the model
+
+-   A named vector of the population estimates of the fixed effects parameters (called theta)
+
+-   A named square variance-covariance matrix of the population parameters inter-individual variability (called omega). In general, the estimates of the variances of the random effects can be given under different parameterizations depending on the authors. In this case the coefficiente of variation ( $CV$ ) was available and the variance was computed back as $log(CV^2 + 1)$
+
+-   The estimates of the parameters of the residual error model (called sigma)
+
+### Model averaging and selection
+
+When multiple models are identified for the same drug, model averaging techniques will be employed to integrate information across models. This approach acknowledges model uncertainty and allows predictions to reflect variability across plausible model structures. In the present project, model averaging will be implemented using a log-likelihood–based weighting approach, derived from the objective function values (OFV). For each model $i$ the likelihood $L_i$ is computed as: $$L_i = exp(-OFV_i/2)$$ The weights for each model are then calculated as: $$w_i = \frac{L_i}{\sum_{j=1}^{n} L_j}$$ where $n$ is the total number of models considered. These weights are subsequently used to combine model predictions, such that the final prediction for a given outcome is a weighted average of the predictions from each individual model.
+
+The inclusion of AIC-based or alternative weighting schemes is planned as a future methodological extension, following the completion of model reconstruction and external validation activities.
+
+### External Model Validation
+
+External validation will be performed using retrospective clinical datasets containing TDM data for the selected antimicrobial agents. Key steps in the validation process include: - Data Preparation: Clinical datasets will be curated to ensure data quality and consistency. Relevant patient-level covariates (e.g., demographics, body weight, renal function) will be extracted and, where necessary, transformed to match the covariate definitions and parameterizations used in the reconstructed models. Records with implausible values or insufficient information for model evaluation will be discarded.
+
+-   Predictive Performance Assessment: Model-predicted concentrations will be compared with observed TDM measurements using both numerical and graphical diagnostics. Quantitative metrics will include the mean prediction error (MPE) to assess bias and the root mean square error (RMSE) to assess precision. Graphical evaluations will include goodness-of-fit plots to assess the agreement between simulated and observed concentration–time profiles.
+-   Bayesian Forecasting: Individual predictions will be refined using Bayesian forecasting approaches, whereby prior information from the population model is updated with individual TDM observations.
+
+### Development of MIPD Tools
+
+Validated models will be implemented into user-friendly Shiny applications to facilitate clinical decision support. These applications will enable clinicians to input patient-specific data and receive individualized dosing recommendations based on model simulations and target attainment analyses. Key features of the applications will include:
+
+-   Interactive interfaces for data input and visualization of simulation results.
+-   Functionality for performing Bayesian forecasting to update individual predictions based on TDM data.
+-   Tools for evaluating the probability of target attainment (PTA) for various dosing regimens

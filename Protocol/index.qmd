@@ -1,1 +1,44 @@
-# Preface
+# Abbreviations
+
+Acronyms and abbreviations are listed in alphabetical order. Abbreviations of antibiotic compounds refer to those reported in WHONET Antimicrobials Codes (https://whonet.org/WebDocs/WHONET_Antimicrobial_Codes.pdf)
+
+|         |                                            |
+|---------|--------------------------------------------|
+| GDPR    | General Data Protection Regulation         |
+| MDR-GNB | Multi drug resistant Gram negatie bacteria |
+| MIPD    | Model informed presion dosing              |
+| popPK   | Population pharmacokinetic                 |
+| PK/PD   | Pharmacokinetics/Pharmacodynamics          |
+| TDM     | Therapeutic drug monitoring                |
+
+# Overview
+
+This document describes the research protocol for a PhD project focused on the development and clinical translation of pharmacokinetic/pharmacodynamic (PK/PD) models using model-informed precision dosing (MIPD) approaches.
+
+The project addresses the need for individualized antimicrobial dosing in the context of high interindividual variability in drug exposure. It aims to bridge the gap between published pharmacometric models and their practical use in clinical decision-making by systematically reviewing the literature, reconstructing population PK models, and implementing them into interactive tools.
+
+The initial focus will be on selected antimicrobial agents, including dalbavancin and beta-lactam antibiotics, with planned expansion to novel antimicrobial or antiviral drugs as new evidence emerges. A central component of the work is the validation of literature-derived models using real-world clinical data to assess their predictive performance and clinical applicability.
+
+## Aims and Objectives
+
+The primary aim of this PhD project is to develop reproducible and validated PK/PD tools to support model-informed precision dosing in clinical practice.
+
+Specific objectives are to:
+
+-   Perform systematic and repeatable reviews of population PK models for selected drugs
+-   Reconstruct and harmonize published PK/PD models using contemporary pharmacometric methods
+-   Develop Shiny-based applications for individualized dosing support
+-   Validate model performance using real-world therapeutic drug monitoring data
+-   Establish a framework for iterative model updating as new drugs and evidence become available
+
+## Structure of the Protocol
+
+This protocol includes sections describing the clinical background and rationale, the planned methodological approach, validation strategies, a three-year timeline, and the expected scientific and clinical impact of the project.
+
+All components of the PhD project, including analysis code, modeling workflows, documentation, and supporting materials, will be maintained in a dedicated version-controlled Git repository to ensure transparency, reproducibility, and traceability of the research activities. The repository is publicly available at:
+
+::: {style="text-align: center;"}
+<https://github.com/mat194/PhD-thesis.git>
+:::
+
+This repository will serve as the central platform for managing the evolution of the project throughout the PhD, including updates to models, software tools, and documentation.

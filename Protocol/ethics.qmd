@@ -1,0 +1,7 @@
+# Ethical Considerations
+
+This PhD project is primarily methodological in nature and focuses on the systematic review of the literature, the reconstruction and evaluation of published PK/PD models, and the development of MIPD tools. These components do not involve direct patient contact or prospective intervention and therefore do not raise ethical concerns related to participant safety or informed consent.
+
+Where real-world clinical data are used for model validation purposes, analyses will be conducted on retrospective, anonymized or pseudonymized datasets collected as part of routine clinical care. No additional procedures, sampling, or changes to standard patient management will be required for the purposes of this research. Data handling will comply with applicable institutional policies and national and international data protection regulations, including the General Data Protection Regulation (GDPR), where applicable.
+
+Access to clinical data will be granted only after approval by the relevant institutional review boards or ethics committees, where required. All datasets will be stored securely, and access will be restricted to authorized members of the research team. The development of software tools and Shiny applications within this project is intended for research and educational purposes. These tools will not be deployed for direct clinical decision-making without appropriate clinical validation, regulatory approval, and institutional authorization. Any future clinical implementation would be subject to separate ethical review.

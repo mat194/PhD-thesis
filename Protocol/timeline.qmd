@@ -1,0 +1,59 @@
+# Timeline
+
+```{r}
+library(dplyr)
+library(plan)
+
+g <- new("gantt")
+
+# ---- WP1: Systematic literature reviews (parametric popPK) ----
+g <- ganttAddTask(g, "Protocol + search strategy (PubMed/Embase)", "2026-01-01", "2026-03-31", done = 100)
+g <- ganttAddTask(g, "Dalbavancin review (screening → extraction)", "2026-02-01", "2026-06-30", done = 60)
+g <- ganttAddTask(g, "Beta-lactams review (screening → extraction)", "2026-04-01", "2026-12-31", done = 30)
+g <- ganttAddTask(g, "Living update cycle 1", "2027-10-01", "2027-12-15", done = 0)
+g <- ganttAddTask(g, "Living update cycle 2", "2028-10-01", "2028-12-15", done = 0)
+
+# ---- WP2: Model reconstruction & harmonization ----
+g <- ganttAddTask(g, "Model templates + coding standards (rxode2/lotri)", "2026-03-01", "2026-05-31", done = 40)
+g <- ganttAddTask(g, "Reconstruct dalbavancin models (literature → code)", "2026-05-01", "2026-09-30", done = 20)
+g <- ganttAddTask(g, "Reconstruct beta-lactam models (pip/tazo, cefepime, ceftazidime, meropenem)",
+                  "2026-08-01", "2027-06-30", done = 0)
+g <- ganttAddTask(g, "Model harmonization layer (units/covariates/assumptions)", "2027-01-01", "2027-09-30", done = 0)
+
+# ---- WP3: Shiny apps & tooling ----
+g <- ganttAddTask(g, "Shiny framework + shared UI components", "2026-06-01", "2026-10-31", done = 10)
+g <- ganttAddTask(g, "Dalbavancin Shiny implementation (simulation + forecasting)", "2026-09-01", "2027-02-28", done = 0)
+g <- ganttAddTask(g, "Beta-lactams Shiny modules (drug-specific)", "2027-01-15", "2027-10-31", done = 0)
+g <- ganttAddTask(g, "Documentation + reproducibility (renv + Quarto reports)", "2027-06-01", "2028-03-31", done = 0)
+
+# ---- WP4: External validation (TDM datasets) ----
+g <- ganttAddTask(g, "Data access & governance + harmonization", "2026-09-01", "2027-01-31", done = 0)
+g <- ganttAddTask(g, "External validation: dalbavancin (GOF/VPC/Bayesian updating)", "2027-01-01", "2027-06-30", done = 0)
+g <- ganttAddTask(g, "External validation: beta-lactams (by drug / ward)", "2027-05-01", "2028-02-28", done = 0)
+g <- ganttAddTask(g, "Consolidation: model selection / averaging pipeline", "2027-10-01", "2028-05-31", done = 0)
+
+# ---- WP5: Dissemination & thesis writing ----
+g <- ganttAddTask(g, "Manuscript 1 (review + reconstruction framework)", "2026-10-01", "2027-03-31", done = 0)
+g <- ganttAddTask(g, "Manuscript 2 (external validation)", "2027-07-01", "2028-02-28", done = 0)
+g <- ganttAddTask(g, "Manuscript 3 (clinical tool + implementation)", "2028-01-01", "2028-08-31", done = 0)
+g <- ganttAddTask(g, "Thesis writing, revisions, submission", "2028-06-01", "2028-12-31", done = 0)
+
+# ---- Plot ----
+plot(
+  g,
+  ylabel = list(font = ifelse(is.na(g[["start"]]), 2, 1)),
+  event.time  = "2027-12-31",
+  event.label = "End of Year 2",
+  main = "PhD Timeline (36 months): Reviews → Models → Tools → Validation → Thesis"
+)
+
+legend(
+  "topright",
+  pch = 22, pt.cex = 2, cex = 0.9,
+  pt.bg = gray(c(0.3, 0.9)),
+  border = "black",
+  legend = c("Completed", "Not Yet Done"),
+  bg = "white", xpd = TRUE
+)
+```
+

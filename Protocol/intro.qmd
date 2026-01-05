@@ -1,5 +1,25 @@
-# Introduction
+# Background and Rationale
 
-This is a book created from markdown and executable code.
+## Clinical Need
 
-See @knuth84 for additional discussion of literate programming.
+Antimicrobial resistance represents one of the most pressing global health challenges, with increasing rates of multidrug-resistant bacterial and fungal infections leading to higher morbidity, mortality, and healthcare costs [@who_amr_fact_sheet; @naghavi2024global]. In this context, optimizing antimicrobial therapy is essential not only to improve individual patient outcomes but also to limit the selective pressure that drives resistance [@hong2023].
+
+A major contributor to suboptimal antimicrobial therapy is the marked interindividual variability in drug exposure, particularly in critically ill patients and other special populations. Factors such as altered physiology, organ dysfunction, drug–drug interactions, and disease-related changes in pharmacokinetics can lead to unpredictable concentrations following standard dosing regimens [@roberts2011; @wicha2021]. As a result, patients receiving the same dose may experience inadequate exposure, toxicity, or both.
+
+Despite this variability, antimicrobial dosing in routine clinical practice is still largely based on fixed dosing regimens, often derived from studies in relatively homogeneous populations. Such approaches fail to account for patient-specific determinants of exposure and are increasingly recognized as insufficient for drugs with narrow therapeutic windows, complex pharmacokinetics, or exposure–response relationships closely linked to efficacy and safety [@wicha2021].
+
+## Role of PK/PD and MIPD
+
+PK/PD principles provide a quantitative framework to characterize the relationship between drug dosing, systemic exposure, and antimicrobial effect. Population pharmacokinetic models, derived from clinical data, allow the identification of typical parameter values and sources of variability, enabling predictions of drug exposure across diverse patient populations.
+
+MIPD extends these concepts into clinical practice by integrating population models with individual patient data. Through Bayesian forecasting, prior knowledge from population PK models is combined with observed drug concentrations to generate individualized parameter estimates and optimize dosing in real time. This approach allows for adaptive dosing strategies that are responsive to patient-specific characteristics and dynamic clinical changes [@wicha2021].
+
+Therapeutic drug monitoring (TDM) represents a key component of MIPD, providing the empirical data required to refine model-based predictions. When combined with validated PK/PD targets, TDM-supported MIPD has the potential to improve target attainment, reduce toxicity, and enhance clinical outcomes, particularly for antimicrobials with high pharmacokinetic variability.
+
+## Knowledge Gaps
+
+Despite substantial advances in population PK modeling and MIPD methodology, several important gaps limit their widespread clinical implementation. First, PK models are often fragmented across the literature, developed using heterogeneous methodologies, populations, and reporting standards. This fragmentation complicates model comparison, reuse, and integration into unified dosing frameworks.
+
+Second, the translation of published PK/PD models into clinically usable tools remains limited. Many models are reported in a form that is difficult to reproduce or implement, and only a minority are externally validated using independent clinical datasets. As a consequence, the clinical relevance and generalizability of these models are often uncertain [@delvalle-moreno2023].
+
+Finally, there is a lack of openly available, validated, and user-friendly tools that bridge the gap between pharmacometric research and bedside decision-making. In particular, scalable platforms that integrate literature-derived models, real-world validation, and interactive clinical interfaces are scarce. Addressing these gaps is essential to enable the broader adoption of MIPD and to maximize the clinical impact of PK/PD research.
