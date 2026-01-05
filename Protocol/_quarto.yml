@@ -2,23 +2,33 @@ project:
   type: book
 
 book:
-  language: eng
-  title: "PhD protocol"
+  language: en
+  title: "Optimizing Antimicrobial Therapy Through Model-Informed Precision Dosing: A PK/PD-Based Translational Approach"
   author: "Matteo Morra"
   date: today
   date-format: "DD MMMM, YYYY"
   chapters:
     - index.qmd
     - intro.qmd
-    - summary.qmd
+    - project_description.qmd
+    - ethics.qmd
+    - timeline.qmd
     - references.qmd
 
 bibliography: references.bib
+csl: Utils/elsevier-vancouver.csl
+
+execute:
+  echo: false
+  warning: false
+  message: false
 
 format:
   docx:
+    reference-doc: Utils/protocol-reference.docx
     toc: true
+    toc-depth: 2
     number-sections: true
 
-
+citerefs: true
 
