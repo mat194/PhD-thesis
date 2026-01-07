@@ -3711,6 +3711,35 @@
       "NeedsCompilation": "no",
       "Repository": "CRAN"
     },
+    "plan": {
+      "Package": "plan",
+      "Version": "0.4-5",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Tools for Project Planning",
+      "Author": "Dan Kelley <Dan.Kelley@Dal.Ca> [aut,cre], Frank Schmitt <frankschmitt@gmx.de> [aut]",
+      "Maintainer": "Dan Kelley <Dan.Kelley@Dal.Ca>",
+      "Depends": [
+        "R (>= 2.15)",
+        "utils",
+        "methods"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat (>= 3.0.0)"
+      ],
+      "Description": "Supports the creation of 'burndown' charts and 'gantt' diagrams.",
+      "License": "GPL (>= 2)",
+      "Encoding": "UTF-8",
+      "URL": "https://github.com/dankelley/plan, https://dankelley.github.io/plan/",
+      "LazyData": "false",
+      "RoxygenNote": "7.2.3",
+      "VignetteBuilder": "knitr",
+      "Language": "en-US",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
     "plotly": {
       "Package": "plotly",
       "Version": "4.11.0",
