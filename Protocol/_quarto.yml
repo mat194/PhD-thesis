@@ -11,6 +11,7 @@ book:
     - index.qmd
     - intro.qmd
     - project_description.qmd
+    - publication_plan.qmd
     - ethics.qmd
     - timeline.qmd
     - references.qmd
@@ -22,13 +23,16 @@ execute:
   echo: false
   warning: false
   message: false
+  freeze: true
 
 format:
   docx:
     reference-doc: Utils/protocol-reference.docx
     toc: true
     toc-depth: 2
+    toc-title: Contents
     number-sections: true
+    highlight-style: github
 
 citerefs: true
 

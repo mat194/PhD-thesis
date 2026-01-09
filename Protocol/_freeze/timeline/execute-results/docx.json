@@ -1,0 +1,21 @@
+{
+  "hash": "1468afdfc073a095277b8d05a5f5e8eb",
+  "result": {
+    "engine": "knitr",
+    "markdown": "# Timeline\n\nThe following Gantt chart outlines the planned timeline for the various components of the PhD project over a 36-month period.\n\n\n::: {.cell layout-align=\"center\"}\n::: {.cell-output-display}\n![](timeline_files/figure-docx/unnamed-chunk-1-1.png){fig-align='center' width=100%}\n:::\n:::\n\n",
+    "supporting": [
+      "timeline_files"
+    ],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {
+      "knitr": [
+        "{\"type\":\"list\",\"attributes\":{},\"value\":[]}"
+      ]
+    },
+    "preserve": null,
+    "postProcess": false
+  }
+}

@@ -1,6 +1,6 @@
 # Abbreviations
 
-Acronyms and abbreviations are listed in alphabetical order. Abbreviations of antibiotic compounds refer to those reported in WHONET Antimicrobials Codes (https://whonet.org/WebDocs/WHONET_Antimicrobial_Codes.pdf)
+Acronyms and abbreviations are listed in alphabetical order.
 
 |         |                                            |
 |---------|--------------------------------------------|

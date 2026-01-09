@@ -1,53 +1,64 @@
 # Timeline
 
-```{r}
+The following Gantt chart outlines the planned timeline for the various components of the PhD project over a 36-month period.
+
+```{r, fig.width=12, fig.height=8, dpi=300, fig.align="center", out.width="100%"}
 library(dplyr)
 library(plan)
 
 g <- new("gantt")
 
-# ---- Systematic literature reviews (parametric popPK) ----
-g <- ganttAddTask(g, "Protocol", "2025-09-01", "2026-01-15", done = 100)
-g <- ganttAddTask(g, "Dalbavancin review", "2026-02-01", "2026-06-30", done = 60)
-g <- ganttAddTask(g, "Beta-lactams review", "2026-04-01", "2026-12-31", done = 30)
-g <- ganttAddTask(g, "Living update cycle 1", "2027-10-01", "2027-12-15", done = 0)
-g <- ganttAddTask(g, "Living update cycle 2", "2028-10-01", "2028-12-15", done = 0)
+# Helper dates
+proj_start <- "2025-10-01"
+proj_end   <- "2028-09-30"
+
+# ---- Systematic literature reviews ----
+g <- ganttAddTask(g, "Protocol",                    "2025-10-01", "2026-01-15", done = 100)
+g <- ganttAddTask(g, "Dalbavancin review",          "2026-02-01", "2026-06-30", done = 95)
+g <- ganttAddTask(g, "Beta-lactams review",         "2026-04-01", "2026-12-31", done = 0)
+g <- ganttAddTask(g, "Other antibiotics review",    "2027-10-01", "2027-12-15", done = 0)
 
 # ---- Model reconstruction & harmonization ----
-g <- ganttAddTask(g, "Reconstruct dalbavancin models", "2026-05-01", "2026-09-30", done = 20)
+g <- ganttAddTask(g, "Reconstruct dalbavancin models", "2026-05-01", "2026-09-30", done = 90)
 g <- ganttAddTask(g, "Reconstruct beta-lactam models", "2026-08-01", "2027-06-30", done = 0)
 
 # ---- Shiny apps & tooling ----
-g <- ganttAddTask(g, "Shiny  UI components", "2026-06-01", "2026-10-31", done = 10)
-g <- ganttAddTask(g, "Dalbavancin Shiny", "2026-09-01", "2027-02-28", done = 0)
-g <- ganttAddTask(g, "Beta-lactams Shiny", "2027-01-15", "2027-10-31", done = 0)
+g <- ganttAddTask(g, "Shiny UI components",         "2026-06-01", "2026-10-31", done = 0)
+g <- ganttAddTask(g, "Dalbavancin Shiny",           "2026-09-01", "2027-02-28", done = 95)
+g <- ganttAddTask(g, "Beta-lactams Shiny",          "2027-01-15", "2027-10-31", done = 0)
 
-# ----External validation  ----
+# ---- External validation ----
 g <- ganttAddTask(g, "External validation: dalbavancin", "2027-01-01", "2027-06-30", done = 0)
-g <- ganttAddTask(g, "External validation: beta-lactams", "2027-05-01", "2028-02-28", done = 0)
+g <- ganttAddTask(g, "External validation: beta-lactams","2027-05-01", "2028-02-28", done = 0)
 
-# ---- WP5: Dissemination & thesis writing ----
-g <- ganttAddTask(g, "Manuscript 1 (review)", "2026-10-01", "2027-03-31", done = 0)
-g <- ganttAddTask(g, "Manuscript 2 (external validation)", "2027-07-01", "2028-02-28", done = 0)
-g <- ganttAddTask(g, "Manuscript 3 (clinical tool + implementation)", "2028-01-01", "2028-08-31", done = 0)
-g <- ganttAddTask(g, "Thesis writing, revisions, submission", "2028-06-01", "2028-12-31", done = 0)
+# ---- Dissemination & thesis writing ----
+g <- ganttAddTask(g, "Manuscript 1 (review)",                 "2026-10-01", "2027-03-31", done = 0)
+g <- ganttAddTask(g, "Manuscript 2 (external validation)",    "2027-07-01", "2028-02-28", done = 0)
+g <- ganttAddTask(g, "Manuscript 3 (tool + implementation)",  "2028-01-01", "2028-08-31", done = 0)
+g <- ganttAddTask(g, "Thesis (write/revise/submit)",          "2028-06-01", "2028-09-30", done = 0)
 
 # ---- Plot ----
 plot(
   g,
-  ylabel = list(font = ifelse(is.na(g[["start"]]), 2, 1)),
-  event.time  = "2027-12-31",
-  event.label = "End of Year 2",
-  main = "PhD Timeline (36 months): Reviews → Models → Tools → Validation → Thesis"
+  xlim = as.Date(c(proj_start, proj_end)),
+  ylab = "",                         # <- shorter than any title: remove it
+  main = "PhD Timeline (36 months)"
 )
 
+# Project start/end markers
+abline(v = as.Date(proj_start), lty = 2)
+abline(v = as.Date(proj_end),   lty = 2)
+mtext("Start", side = 3, at = as.Date(proj_start), line = 0.2, cex = 0.8)
+mtext("End",   side = 3, at = as.Date(proj_end),   line = 0.2, cex = 0.8)
+
 legend(
-  "topright",
+  x = 1, y = 1.1,                  # 1 = right edge, >1 = above plot
+  xjust = 1, yjust = 1,
   pch = 22, pt.cex = 2, cex = 0.9,
   pt.bg = gray(c(0.3, 0.9)),
   border = "black",
-  legend = c("Completed", "Not Yet Done"),
-  bg = "white", xpd = TRUE
+  legend = c("Completed", "Not yet done"),
+  bg = "white",
+  xpd = NA                         # allow drawing in margins
 )
 ```
-

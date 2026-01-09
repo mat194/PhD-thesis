@@ -1,0 +1,29 @@
+# Publication plan
+
+The project is structured to generate a coherent portfolio of high-impact publications that progressively build from evidence synthesis to model development, clinical validation, and implementation of MIPD tools. Each major antibiotic group (starting with dalbavacin and followed by beta-lactams) will generate its own systematic review and validation output, while being embedded within a unified methodological framework. The anticipated publications are as follows:
+
+## Manuscript 1 – Systematic reviews and model landscape
+
+This manuscript will synthesise all published popPK models for each antibiotic. The review will go beyond standard reporting by evaluating:
+
+-   Structural and statistical model choice.
+-   Covariate relationships (renal function, weight, inflammation, etc.
+-   Identifiability, transportability, and clinical usability.
+-   Suitability for therapeutic drug monitoring (TDM) and MIPD.
+-   The dalbavancin component, already close to completion, will form the core of this first publication, with subsequent updates incorporating beta-lactams and other antibiotics under a living-review framework. This paper will provide the evidentiary basis for model selection and reconstruction in the subsequent work packages.
+
+## Manuscript 2 – External validation and model performance
+
+For each antibiotic, a companion paper will report the external validation of reconstructed popPK models using independent real-world clinical datasets. This manuscript will focus on: - Data sources and patient demographics. - Performance metrics. - Identification of best-performing models for MIPD applications. - Exploration of model limitations and areas for improvement.
+
+## Manuscript 3 – Clinical tool and implementation
+
+This manuscript will describe the development, integration, and clinical deployment of the Shiny-based MIPD platform. It will include:
+
+-   Model selection and harmonisation strategy.
+-   Bayesian forecasting and dose individualisation workflow.
+-   Integration of TDM data.
+-   Usability and clinical workflow.
+-   Case studies and simulation-based performance
+
+This paper will represent the translational endpoint of the PhD, demonstrating how pharmacometric methods can be embedded into clinical practice.
