@@ -1,0 +1,48 @@
+---
+title: "PhD in Model-Informed Precision Dosing"
+subtitle: "Sintesi del progetto"
+author: "Matteo Morra"
+date: today
+format:
+  typst:
+    papersize: a4
+    margin:
+      top: 2.5cm
+      bottom: 2.5cm
+      left: 3cm
+      right: 3cm
+    mainfont: "Libertinus Serif"
+    sansfont: "Inter"
+    monofont: "JetBrains Mono"
+    fontsize: 10.5pt
+    leading: 1.4
+    link-color: "#1f4fd8"
+    headings:
+      weight: "bold"
+      underline: false
+---
+
+Gentile Prof Bortolotti,
+
+Sto avviando un progetto di dottorato incentrato sullo sviluppo e sull’applicazione della **model-informed precision dosing** (MIPD) per l’ottimizzazione della terapia antibiotica nei pazienti complessi. L’idea alla base del progetto è trasformare i modelli farmacocinetici disponibili in letteratura in strumenti realmente utilizzabili nella pratica clinica, validandoli su dati di therapeutic drug monitoring (TDM) provenienti da pazienti reali.
+
+Il dottorato sarà svolto in **cotutela con l’Università di Nantes**, all’interno di una rete internazionale di collaborazioni. Un punto di forza centrale del progetto è la disponibilità di ampi dataset TDM provenienti da più centri europei, che permettono una vera validazione esterna dei modelli, condizione essenziale per garantirne l’affidabilità e la trasferibilità clinica.
+
+I dati clinici utilizzati per la validazione proverranno principalmente da diversi centri francesi, in particolare Nantes, Brest e Marsiglia, con la possibilità di includere ulteriori ospedali. A questi si affiancheranno dataset provenienti dalla **Spagna** (Barcellona), e **Australia** (Brisbane). È inoltre previsto il possibile coinvolgimento di **centri italiani**, tra cui Udine, ampliando ulteriormente la rappresentatività e la robustezza del database. Nel complesso, questo consentirà di costruire uno dei più ampi e diversificati insiemi di dati disponibili per la validazione dei modelli farmacocinetici degli antibiotici.
+
+Il progetto prende avvio da revisioni sistematiche dei modelli di farmacocinetica di popolazione (popPK), separatamente per ciascun antibiotico (inizialmente dalbavancina e successivamente i beta-lattamici, vancomicina etc). Queste revisioni analizzeranno l’idoneità all’impiego clinico dei modelli popPK.
+
+I modelli selezionati verranno quindi ricostruiti in R e sottoposti a validazione esterna con dati TDM per valutare quanto accuratamente predicano le concentrazioni osservate e la probabilità di raggiungere i target terapeutici.
+
+I modelli che dimostrano buone prestazioni verrano infine integrati in una web-app Shiny, che consentirà di simulare regimi di dose, incorporare misurazioni TDM e proporre dosaggi personalizzati basati sulla probabilità di target attainment.
+
+L’intero progetto è e sarà sviluppato secondo principi di open-science e riproducibilità. Codice, modelli, workflow e documentazione sono mantenuti in un repository Git pubblico:
+
+```{=typst}
+#align(center)[
+  #link("https://github.com/mat194/PhD-thesis")[
+     #text(weight: "bold")["https://github.com/mat194/PhD-thesis"]
+  ]
+]
+```
+Questo repository rappresenta l’infrastruttura centrale del progetto e consente sia la tracciabilità delle analisi sia la condivisione dei risultati con la comunità scientifica.
