@@ -6,30 +6,32 @@ Acronyms and abbreviations are listed in alphabetical order.
 |---------|--------------------------------------------|
 | GDPR    | General Data Protection Regulation         |
 | MDR-GNB | Multi drug resistant Gram negatie bacteria |
-| MIPD    | Model informed presion dosing              |
+| MIPD    | Model-informed presion dosing              |
 | popPK   | Population pharmacokinetic                 |
 | PK/PD   | Pharmacokinetics/Pharmacodynamics          |
 | TDM     | Therapeutic drug monitoring                |
+| RCT     | Randomised control trial                   |
 
 # Overview
 
 This document describes the research protocol for a PhD project focused on the development and clinical translation of pharmacokinetic/pharmacodynamic (PK/PD) models using model-informed precision dosing (MIPD) approaches.
 
-The project addresses the need for individualized antimicrobial dosing in the context of high interindividual variability in drug exposure. It aims to bridge the gap between published pharmacometric models and their practical use in clinical decision-making by systematically reviewing the literature, reconstructing population PK models, and implementing them into interactive tools.
+The project addresses the need for individualized antimicrobial agents dosing regimens in the context of high interindividual variability in drug exposure and difficult-to-treat infectious diseases. It aims to bridge the gap between published pharmacometric models and their practical use in clinical decision-making by systematically reviewing the literature, reconstructing and evaluating population PK models, and implementing them into interactive tools.
 
 The initial focus will be on selected antimicrobial agents, including dalbavancin and beta-lactam antibiotics, with planned expansion to novel antimicrobial or antiviral drugs as new evidence emerges. A central component of the work is the validation of literature-derived models using real-world clinical data to assess their predictive performance and clinical applicability.
 
 ## Aims and Objectives
 
-The primary aim of this PhD project is to develop reproducible and validated PK/PD tools to support model-informed precision dosing in clinical practice.
+The primary aim of this PhD project is to develop reproducible and validated PK/PDtools to support MIPD in clinical practice.
 
 Specific objectives are to:
 
 -   Perform systematic and repeatable reviews of population PK models for selected drugs
 -   Reconstruct and harmonize published PK/PD models using contemporary pharmacometric methods
--   Develop Shiny-based applications for individualized dosing support
+-   Develop Shiny-based applications for individualized dosing support,supported by a full development lifecycle and automated pipelines for external model validation
 -   Validate model performance using real-world therapeutic drug monitoring data
 -   Establish a framework for iterative model updating as new drugs and evidence become available
+-   Develop a formal protocol for the clinical implementation of MIPD, including the design of a randomized controlled trial (RCT) to evaluate clinical, pharmacological, and translational outcomes
 
 ## Structure of the Protocol
 

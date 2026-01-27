@@ -12,37 +12,48 @@ g <- new("gantt")
 proj_start <- "2025-10-01"
 proj_end   <- "2028-09-30"
 
-# ---- Systematic literature reviews ----
-g <- ganttAddTask(g, "Protocol",                    "2025-10-01", "2026-01-15", done = 100)
-g <- ganttAddTask(g, "Dalbavancin review",          "2026-02-01", "2026-06-30", done = 95)
-g <- ganttAddTask(g, "Beta-lactams review",         "2026-04-01", "2026-12-31", done = 0)
-g <- ganttAddTask(g, "Other antibiotics review",    "2027-10-01", "2027-12-15", done = 0)
+# ---- Core workpackages (feed into manuscripts) ----
+# Systematic literature reviews
+g <- ganttAddTask(g, "Protocol",                 "2025-10-01", "2026-01-15", done = 100)
+g <- ganttAddTask(g, "Dalbavancin review",       "2026-02-01", "2026-06-30", done = 95)
+g <- ganttAddTask(g, "Beta-lactams review",      "2026-04-01", "2026-12-31", done = 0)
+g <- ganttAddTask(g, "Other antibiotics review", "2027-10-01", "2027-12-15", done = 0)
 
-# ---- Model reconstruction & harmonization ----
+# Model reconstruction & harmonization
 g <- ganttAddTask(g, "Reconstruct dalbavancin models", "2026-05-01", "2026-09-30", done = 90)
 g <- ganttAddTask(g, "Reconstruct beta-lactam models", "2026-08-01", "2027-06-30", done = 0)
 
-# ---- Shiny apps & tooling ----
-g <- ganttAddTask(g, "Shiny UI components",         "2026-06-01", "2026-10-31", done = 0)
-g <- ganttAddTask(g, "Dalbavancin Shiny",           "2026-09-01", "2027-02-28", done = 95)
-g <- ganttAddTask(g, "Beta-lactams Shiny",          "2027-01-15", "2027-10-31", done = 0)
+# Shiny apps & tooling
+g <- ganttAddTask(g, "Shiny UI components", "2026-06-01", "2026-10-31", done = 0)
+g <- ganttAddTask(g, "Dalbavancin Shiny",   "2026-09-01", "2027-02-28", done = 95)
+g <- ganttAddTask(g, "Beta-lactams Shiny",  "2027-01-15", "2027-10-31", done = 0)
 
-# ---- External validation ----
-g <- ganttAddTask(g, "External validation: dalbavancin", "2027-01-01", "2027-06-30", done = 0)
-g <- ganttAddTask(g, "External validation: beta-lactams","2027-05-01", "2028-02-28", done = 0)
+# External validation
+g <- ganttAddTask(g, "External validation: dalbavancin",  "2027-01-01", "2027-06-30", done = 0)
+g <- ganttAddTask(g, "External validation: beta-lactams", "2027-05-01", "2028-02-28", done = 0)
 
-# ---- Dissemination & thesis writing ----
-g <- ganttAddTask(g, "Manuscript 1 (review)",                 "2026-10-01", "2027-03-31", done = 0)
-g <- ganttAddTask(g, "Manuscript 2 (external validation)",    "2027-07-01", "2028-02-28", done = 0)
-g <- ganttAddTask(g, "Manuscript 3 (tool + implementation)",  "2028-01-01", "2028-08-31", done = 0)
-g <- ganttAddTask(g, "Thesis (write/revise/submit)",          "2028-06-01", "2028-09-30", done = 0)
+# Validation framework / pipelines (posologyr + user-facing infrastructure)
+g <- ganttAddTask(g, "Validation framework + pipelines", "2027-04-01", "2028-02-28", done = 0)
+
+# RCT protocol (design work; not the trial itself)
+g <- ganttAddTask(g, "RCT protocol design", "2027-09-01", "2028-05-31", done = 0)
+
+# ---- Manuscripts (aligned to your 5-manuscript plan) ----
+g <- ganttAddTask(g, "Manuscript 1: Systematic review",                "2026-10-01", "2027-03-31", done = 0)
+g <- ganttAddTask(g, "Manuscript 2: External validation benchmarking", "2027-07-01", "2028-02-28", done = 0)
+g <- ganttAddTask(g, "Manuscript 3: Validation framework (posologyr)", "2027-10-01", "2028-04-30", done = 0)
+g <- ganttAddTask(g, "Manuscript 4: Shiny tool + implementation",      "2028-01-01", "2028-08-31", done = 0)
+g <- ganttAddTask(g, "Manuscript 5: RCT protocol for MIPD",            "2028-03-01", "2028-07-31", done = 0)
+
+# Thesis writing
+g <- ganttAddTask(g, "Thesis (write/revise/submit)", "2028-06-01", "2028-09-30", done = 0)
 
 # ---- Plot ----
 plot(
   g,
   xlim = as.Date(c(proj_start, proj_end)),
-  ylab = "",                         # <- shorter than any title: remove it
-  main = "PhD Timeline (36 months)"
+  ylab = "",
+  main = "PhD Timeline (36 months) — Workpackages + Manuscripts"
 )
 
 # Project start/end markers
@@ -52,13 +63,13 @@ mtext("Start", side = 3, at = as.Date(proj_start), line = 0.2, cex = 0.8)
 mtext("End",   side = 3, at = as.Date(proj_end),   line = 0.2, cex = 0.8)
 
 legend(
-  x = 1, y = 1.1,                  # 1 = right edge, >1 = above plot
+  x = 1, y = 1.1,
   xjust = 1, yjust = 1,
   pch = 22, pt.cex = 2, cex = 0.9,
   pt.bg = gray(c(0.3, 0.9)),
   border = "black",
   legend = c("Completed", "Not yet done"),
   bg = "white",
-  xpd = NA                         # allow drawing in margins
+  xpd = NA
 )
 ```

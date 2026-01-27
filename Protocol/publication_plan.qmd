@@ -12,11 +12,15 @@ This manuscript will synthesise all published popPK models for each antibiotic. 
 -   Suitability for therapeutic drug monitoring (TDM) and MIPD.
 -   The dalbavancin component, already close to completion, will form the core of this first publication, with subsequent updates incorporating beta-lactams and other antibiotics under a living-review framework. This paper will provide the evidentiary basis for model selection and reconstruction in the subsequent work packages.
 
-## Manuscript 2 – External validation and model performance
+## Manuscript 2 – External validation and model performance benchmarking
 
-For each antibiotic, a companion paper will report the external validation of reconstructed popPK models using independent real-world clinical datasets. This manuscript will focus on: - Data sources and patient demographics. - Performance metrics. - Identification of best-performing models for MIPD applications. - Exploration of model limitations and areas for improvement.
+This manuscript will report the external validation of reconstructed population PK models using independent real-world clinical datasets. It will focus on systematic benchmarking of model performance across heterogeneous clinical cohorts, including detailed characterization of data sources and patient populations, quantitative evaluation of predictive performance metrics, identification of best-performing models for MIPD applications, and structured analysis of model limitations and sources of prediction error. This paper will provide empirical evidence on model generalizability, clinical plausibility, and comparative performance in real-world settings.
 
-## Manuscript 3 – Clinical tool and implementation
+## Manuscript 3 – Methodological framework for external validation of PK/PD models
+
+This manuscript will describe the development of a standardized, reproducible, and openly accessible validation framework for PK/PD models. It will formalize a generalizable external validation workflow and present the associated standardized tools, automated pipelines, and reproducible infrastructures that enable independent external validation by external users on their own clinical datasets. The manuscript will include a dedicated methodological component on the implementation of external validation workflows using `posologyr`, providing practical guidance, reproducible examples, and open-source tools to support model validation.
+
+## Manuscript 4 – Clinical tool and implementation
 
 This manuscript will describe the development, integration, and clinical deployment of the Shiny-based MIPD platform. It will include:
 
@@ -27,3 +31,7 @@ This manuscript will describe the development, integration, and clinical deploym
 -   Case studies and simulation-based performance
 
 This paper will represent the translational endpoint of the PhD, demonstrating how pharmacometric methods can be embedded into clinical practice.
+
+## Manuscript 5 – RCT protocol for MIPD
+
+This manuscript will present the design and methodology of a RCT aimed at evaluating the clinical implementation of MIPD in routine care as described in the secondary objectives section of the protocol. 

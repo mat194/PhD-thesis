@@ -1,3 +1,7 @@
+---
+bibliography: references.bib
+---
+
 # Overall Objectives and Research Questions
 
 ## Primary Objective
@@ -11,6 +15,7 @@ To develop, validate, and implement PK/PD models derived from the published lite
 -   Perform external validation using real-world clinical data (e.g., TDM datasets) to assess predictive performance and clinical plausibility.
 -   Develop Shiny-based decision support tools implementing the validated models for simulation, Bayesian forecasting, and target attainment evaluation.
 -   Establish a framework for periodic evidence updating, enabling the inclusion of newly published models and emerging agents (e.g., rezafungin, cabotegravir).
+-   Develop a formal clinical trial protocol for the implementation of MIPD in clinical practice, including the design of a RCT to evaluate clinical, pharmacological, and patient-centered outcomes of MIPD-guided therapy.
 
 ### Literature Search Strategy
 
@@ -118,7 +123,7 @@ The model is a two-compartment parametric model with first-order elimination, in
 # Differential equation describing compartments kinetics
     d/dt(centr)  <- -ke * centr - k12 * centr + k21 * periph 
     d/dt(periph) <-  k12 * centr - k21 * periph                
-    d/dt(AUC) <- Cc                         #
+    d/dt(AUC) <- Cc                       
   }),
 # Combined additive and proportional residual error model
   error_model = function(f, sigma) {        
@@ -139,7 +144,7 @@ The model is a two-compartment parametric model with first-order elimination, in
       c(0.0654, 0, 0.0255, 0, 0, 0.1213, 0, 0, 0, 0.2063)
   }),
 # Residual variability parameters
-  sigma = c(                                 #
+  sigma = c(                                
     additive_a     = 0,
     proportional_b = 0.3392          
   )                                       
@@ -163,7 +168,7 @@ The inclusion of AIC-based or alternative weighting schemes is planned as a futu
 
 ### External Model Validation
 
-External validation will be performed using retrospective clinical datasets containing TDM data for the selected antimicrobial agents. Validation will assess both population-level (a priori) and individualized (a posteriori) predictive performance of the reconstructed models.
+External validation will be performed using retrospective clinical datasets containing TDM data for the selected antimicrobial agents. Validation will assess both population-level (a priori) and individualized (a posteriori) predictive performance of the reconstructed models. The validation pipeline will be developed as a standardized, reproducible, and user-accessible framework, enabling external users and collaborating centers to independently validate models on their own datasets.
 
 The validation process will include the following steps:
 
@@ -180,3 +185,13 @@ Validated models will be implemented into user-friendly Shiny applications to fa
 -   Interactive interfaces for data input and visualization of simulation results.
 -   Functionality for performing Bayesian forecasting to update individual predictions based on TDM data.
 -   Tools for evaluating the probability of target attainment (PTA) for various dosing regimens
+
+### Clinical Implementation and RCT Protocol for MIPD
+
+To ensure translational impact and clinical applicability, this project will include the development of a formal RCT protocol to evaluate the clinical implementation of MIPD-guided therapy. The trial framework will be designed to evaluate the effectiveness, safety, and clinical utility of MIPD-guided dosing strategies.
+
+Given the multidimensional nature of antimicrobial treatment and the fact that mortality alone is an infeasible primary endpoint for evaluating dosing strategies and implementation interventions, primary and secondary endpoints will be defined using desirability-based outcome ranking frameworks, such as DOOR [@evans2015].
+
+Depending on the clinical syndrome under investigation, primary and secondary endpoints will be defined using desirability-based outcome ranking frameworks, such as DOOR, informed by existing methodological literature or adapted to the specific clinical context of antimicrobial therapy [@ong2023].
+
+Adaptive trial components will be explored, with particular emphasis on population enrichment strategies. This will include adaptive recruitment frameworks that progressively focus on patient subgroups most likely to benefit from MIPD-guided therapy, such as individuals with high PK variability, altered physiology, or organ dysfunction [@Pallmann2018].

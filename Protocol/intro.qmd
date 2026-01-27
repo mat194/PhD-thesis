@@ -6,7 +6,7 @@ Antimicrobial resistance represents one of the most pressing global health chall
 
 A major contributor to suboptimal antimicrobial therapy is the marked interindividual variability in drug exposure, particularly in critically ill patients and other special populations. Factors such as altered physiology, organ dysfunction, drug–drug interactions, and disease-related changes in pharmacokinetics can lead to unpredictable concentrations following standard dosing regimens [@roberts2011; @wicha2021]. As a result, patients receiving the same dose may experience inadequate exposure, toxicity, or both.
 
-Despite this variability, antimicrobial dosing in routine clinical practice is still largely based on fixed dosing regimens, often derived from studies in relatively homogeneous populations. Such approaches fail to account for patient-specific determinants of exposure and are increasingly recognized as insufficient for drugs with narrow therapeutic windows, complex pharmacokinetics, or exposure–response relationships closely linked to efficacy and safety [@wicha2021].
+Despite this variability, antimicrobial dosing in routine clinical practice is still largely based on fixed dosing regimens, often derived from studies in relatively homogeneous populations. Such approaches fail to account for patient-specific determinants of exposure and are increasingly recognized as insufficient for drugs with narrow therapeutic windows, complex pharmacokinetics, or exposure–response relationships closely linked to efficacy and safety [@wicha2021]. Therapeutic drug monitoring (TDM), which is sometimes used, makes it possible to assess target attainment but often suffers from a delay and does not allow precise dosing adjustment recommendations.
 
 ## Role of PK/PD and MIPD
 
@@ -14,7 +14,7 @@ PK/PD principles provide a quantitative framework to characterize the relationsh
 
 MIPD extends these concepts into clinical practice by integrating population models with individual patient data. Through Bayesian forecasting, prior knowledge from population PK models is combined with observed drug concentrations to generate individualized parameter estimates and optimize dosing in real time. This approach allows for adaptive dosing strategies that are responsive to patient-specific characteristics and dynamic clinical changes [@wicha2021].
 
-Therapeutic drug monitoring (TDM) represents a key component of MIPD, providing the empirical data required to refine model-based predictions. When combined with validated PK/PD targets, TDM-supported MIPD has the potential to improve target attainment, reduce toxicity, and enhance clinical outcomes, particularly for antimicrobials with high pharmacokinetic variability.
+TDM represents a key component of MIPD, providing the empirical data required to refine model-based predictions. When combined with validated PK/PD targets, TDM-supported MIPD has the potential to improve target attainment, reduce toxicity, and enhance clinical outcomes, particularly for antimicrobials with high pharmacokinetic variability.
 
 ## Knowledge Gaps
 
