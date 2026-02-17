@@ -4,6 +4,72 @@ library(readxl)
 library(ggrepel)
 library(flextable)
 library(gtsummary)
+library(janitor)
+
+# Load data ---------------------------------------------------------------
+
+df1 <- read_excel("Vancomycin/Data/data_bloomy.xlsx") %>% filter(!is.na(LD))
+df_init <- read_excel("Vancomycin/Data/udine.xlsx") %>% 
+  janitor::clean_names() %>% 
+  dplyr::filter(!is.na(record_id)) %>% 
+  ungroup() %>% 
+  transmute(
+    record_id, 
+    age = floor(age_y),
+    sex = tolower(sex_male_female),
+    TIME = time, 
+    EVID = evid_0_osservazione_1_dose,
+    AMT = amt,
+    DUR = dur,
+    DV = conc,
+    altezza = altezza_m,
+    peso =  peso_kg,
+    vm = NA_character_,
+    CRRT = crrt, 
+    LD = ld,
+    dialisi, 
+    creatinina ,
+    ii_interdose_interval,
+    addl
+  )
+
+dose_expanded  <- df_init %>% 
+  dplyr::filter(EVID == 1) %>% 
+  mutate(
+    ADDL = replace_na(addl, 0L),
+    II   = replace_na(ii_interdose_interval, 0)
+  ) %>% 
+  #distinct(record_id, TIME, .keep_all = TRUE) %>%
+  rowwise() %>%
+  mutate(
+    TIME_seq = list(seq(
+      from = TIME,
+      by = as.difftime(II, units = "hours"),
+      length.out = ADDL + 1
+    ))
+  ) %>%
+  ungroup() %>%
+  select(-TIME) %>%
+  unnest(TIME_seq) %>%
+  rename(TIME = TIME_seq) %>%
+  mutate(
+    EVID = 1,
+    DV = NA,
+    TIME = as.numeric(TIME)
+  ) %>% 
+  arrange(record_id, TIME) %>% 
+  tidyr::fill(creatinina, .direction = "updown")
+
+df <- dplyr::bind_rows(df_init %>% filter(EVID == 0), dose_expanded) %>%
+  arrange(record_id, TIME) %>% 
+  dplyr::select(any_of(names(df1))) %>% 
+  filter(!is.na(sex))
+
+na_sex <- df %>% filter(is.na(sex)) %>% pull(record_id)
+na_creat <- df %>% filter(is.na(creatinina)) %>% pull(record_id)
+
+to_fix <- df %>% filter(record_id %in% na_sex)
+to_fix2 <- df %>% filter(record_id %in% na_creat)
 
 # Funzioni ----------------------------------------------------------------
 
@@ -23,8 +89,6 @@ library(gtsummary)
    }
    return(egfr)
  }
- 
-df <- read_excel("Vancomycin/Data/data_bloomy.xlsx") %>% filter(!is.na(LD))
 
 
 calculate_crcl <- function(age, weight_kg, serum_creatinine_mg_dl, gender) {
@@ -37,12 +101,12 @@ calculate_crcl <- function(age, weight_kg, serum_creatinine_mg_dl, gender) {
 
 
 df_patients <- df %>% 
-  rowwise() %>%  # Apply the function row-wise
+  rowwise() %>%  
   mutate(
-    CLCREAT = ifelse(
-      is.na(creatinina) | creatinina == 0, NA,  # Handle missing or zero creatinine values
+    CLCREAT = if_else(
+      is.na(creatinina) | creatinina == 0, NA,
       calculate_crcl(
-        age =age,  # Replace with actual age if available
+        age = age,  
         weight_kg = peso,
         serum_creatinine_mg_dl = creatinina,
         gender = sex
@@ -52,7 +116,7 @@ df_patients <- df %>%
   ungroup() %>% 
   group_by(record_id) %>% 
   mutate(
-    ID =cur_group_id() , #dplyr way to get the index column working easily: gives a unique numeric identifier for the current group.
+    ID =cur_group_id() ,
   ) %>% 
   ungroup() %>% 
   rename(
@@ -370,7 +434,7 @@ doses <- df_patients %>%
   select(
     ID, TIME, AMT, DUR
   ) 
-
+# farlo su tutte le osservazioni
 population_df <- df_patients %>% 
   group_by(ID) %>% 
   filter(
@@ -380,13 +444,16 @@ population_df <- df_patients %>%
     AMT = 0,
     EVID = 0,
     DUR = NA
-  )
+  ) %>% 
+  ungroup() %>% 
+  dplyr::filter(!is.na(creatinina),!is.na(WT))
 
 results <- list()
 max_time <- max(df_patients$TIME, na.rm = TRUE)
 
-for (i in unique(population_df$ID)) {
-  # Filter data for the current patient
+models_to_use <- setdiff(names(models_vancomycin), "Medellin2017")
+#unique(population_df$ID)
+for (i in 40:81) {
   patient_data_for_pop <- population_df %>% 
     filter(ID == i) %>% 
     mutate(
@@ -404,7 +471,7 @@ for (i in unique(population_df$ID)) {
   results[[i]] <- list()
   
   # Iterate over each model in models_vancomycin
-  for (model_name in names(models_vancomycin)) {
+  for (model_name in models_to_use) {
     model <- models_vancomycin[[model_name]]
     
     sim_results <- posologyr::poso_simu_pop(
@@ -435,6 +502,8 @@ for (i in unique(population_df$ID)) {
   }
 }
 
+# save(results, file = "udine.Rdata")
+
 # The function being applied is [[, which is used for extracting elements from a 
 # list. Here, model_name is provided as an argument to [[, so it extracts the data 
 # corresponding to model_name from each patient's sublist.
@@ -452,27 +521,20 @@ for (model_name in names(models_vancomycin)) {
 
 #Definizioni prese dal papaer di Wicha sulla vancomicina
 calculate_metrics <- function(data, n_bootstrap = 0, conf_level = 0.95) {
-  
   N <- nrow(data)
-  
   # Function to calculate metrics for a single dataset
   calculate_single <- function(data) {
     # Calculate rBias
     rBias <- (1 / N) * sum((data$predicted - data$observed) / ((data$predicted + data$observed) / 2)) * 100
-    
     # Calculate rRMSE
     rRMSE <- sqrt((1 / N) * sum(((data$predicted - data$observed)^2) / (((data$predicted + data$observed) / 2)^2))) * 100
-    
     # Calculate rPE for each observation
     data <- data %>%
       mutate(rPE = ((predicted - observed) / (observed / 2)) * 100)
-    
     # Calculate MPE (median of rPE)
     MPE <- median(data$rPE, na.rm = TRUE)
-    
     # Calculate MAPE (median of absolute rPE)
     MAPE <- median(abs(data$rPE), na.rm = TRUE)
-    
     # Return calculated metrics
     c(rBias = rBias, rRMSE = rRMSE, MPE = MPE, MAPE = MAPE)
   }
@@ -520,7 +582,6 @@ calculate_metrics <- function(data, n_bootstrap = 0, conf_level = 0.95) {
 results_metrics <- lapply(combined_results, function(model_data) {
   model_data <- model_data %>% rename(predicted = Cc, observed = DV)
   model_data <- model_data %>% filter(!is.na(predicted) & !is.na(observed))
-  
   # Calculate metrics with bootstrapping (set n_bootstrap > 0 to enable)
   calculate_metrics(model_data, n_bootstrap = 1000, conf_level = 0.95)
 })
@@ -618,9 +679,6 @@ worst_precision <- combined_results[[best_model]] %>%
 
 results2 <- list()
 
-df_patients <- df_patients %>% 
- filter(!is.na(CLCREAT))
-
 for (i in unique(population_df$ID)) {
   patient_data_for_map <- df_patients %>%
     filter(ID == i)
@@ -628,7 +686,7 @@ for (i in unique(population_df$ID)) {
   results2[[i]] <- list()
   
   # Iterate over each model in models_vancomycin
-  for (model_name in names(models_vancomycin)) {
+  for (model_name in models_to_use) {
     model <- models_vancomycin[[model_name]]
     
     sim_results <- posologyr::poso_estim_map(patient_data_for_map, model)
@@ -640,6 +698,8 @@ for (i in unique(population_df$ID)) {
     
   }
 }
+
+save(results2, file = "udine_map.Rdata" )
 
 combined_results2 <- list()
 for (model_name in names(models_vancomycin)) {
@@ -803,9 +863,8 @@ ggsave("combined.png", plot = combined_plot, width = 10, height = 6, dpi = 300)
 # Plot AUC ----------------------------------------------------------------
 
 dv_valle <- combined_results$Goti2018 %>% 
-  filter(!is.na(DV)) %>%
-  filter(time == 47.5) %>% 
-  select(DV, ID)
+  filter(!is.na(DV))
+
 
 df_goti <- combined_results$Goti2018 %>% 
   left_join(df_goti2 %>% select(time, ID, AUC_map = AUC), by = c("time", "ID")) %>% 
@@ -845,13 +904,11 @@ p1 <- ggplot(df_goti, aes(x = DV, y = Cc)) +
   labs(title = "Model Fit for Goti2018 Model",
        x = "Observed",
        y = "Predicted") +
-  coord_cartesian(xlim = c(0, max(df_goti$DV, df_goti$Cc)), 
-                  ylim = c(0, max(df_goti$DV, df_goti$Cc))) +
+  coord_fixed() +
   theme_classic()
 
 
 # improvment --------------------------------------------------------------
-
 
 improvment <- df_combinato %>% 
   select(method,Model, rBias, rRMSE) %>% 
@@ -864,7 +921,6 @@ improvment <- df_combinato %>%
 
 
 # AUC plot ----------------------------------------------------------------
-
 combined_auc1 <- bind_rows(
   lapply(names(combined_results), function(model_name) {
     combined_results[[model_name]] %>%

@@ -11,7 +11,6 @@ library(shinycssloaders)
 library(shinydashboard)
 library(shinyWidgets)
 library(shinydashboardPlus)
-library(jsonlite)
 library(shinyFeedback)
 library(shinyBS)
 library(waiter)
@@ -264,7 +263,6 @@ Dalbavancin <- list(
       g <- sigma[1] + sigma[2] * f
       return(g)
     },
-    # Fixed effects (Table 3)
     theta = c(
       THETA_Cl      = 0.0531,
       THETA_V1      = 3.04,
@@ -285,11 +283,13 @@ Dalbavancin <- list(
     ),
     
     covariates = c("ALBUMIN", "CLCR", "WT", "AGE"),
-    
-    # Omega matrix (IIV) — diagonal only; correlations omitted for simplicity
+  
     omega = lotri::lotri({
       ETA_Cl + ETA_V2 + ETA_V1 + ETA_V3 ~
-        c(log((22 / 100) ^ 2 + 1), 0, log((41 / 100) ^ 2 + 1), 0, 0, log((24 / 100) ^ 2 + 1), 0, 0, 0, log((74 / 100) ^ 2 + 1))
+        c(log((22 / 100) ^ 2 + 1), 
+          0, log((41 / 100) ^ 2 + 1), 
+          0, 0, log((24 / 100) ^ 2 + 1), 
+          0, 0, 0, log((74 / 100) ^ 2 + 1))
     }),
     sigma = c(additive_a = 0, proportional_b = 0.0362)
   ),
@@ -304,15 +304,12 @@ Dalbavancin <- list(
       V2 = THETA_V2 * exp(ETA_V2)
       Q  = THETA_Q  * exp(ETA_Q)
       
-      # Rate constants
       k10 = CL / V1
       k12 = Q / V1
       k21 = Q / V2
       
-      # Concentrations
       Cc = centr / V1
-      
-      # Differential equations
+
       d/dt(centr)  = -k10 * centr - k12 * centr + k21 * periph
       d/dt(periph) =  k12 * centr - k21 * periph
       d/dt(AUC)    = Cc
@@ -324,11 +321,11 @@ Dalbavancin <- list(
     },
     
     theta = c(
-      THETA_CL = 0.106,      # L/h
-      THETA_V1 = 4.53,       # L
-      THETA_V2 = 31.9,       # L
-      THETA_Q  = 0.51,       # L/h
-      THETA_CL_CLCR = 0.5    # Exponent for CLCR effect
+      THETA_CL = 0.106,      
+      THETA_V1 = 4.53,       
+      THETA_V2 = 31.9,       
+      THETA_Q  = 0.51,       
+      THETA_CL_CLCR = 0.5   
     ),
     
     covariates = c("eGFR"),
@@ -343,7 +340,7 @@ Dalbavancin <- list(
         )
     }),
     
-    sigma = c(additive_a = 0, proportional_b = 0.15)  # 15% proportional error
+    sigma = c(additive_a = 0, proportional_b = 0.15)
   ),
   Baiardi2025 = list(
     ppk_model = rxode2::rxode2({
@@ -373,10 +370,10 @@ Dalbavancin <- list(
     },
     
     theta = c(
-      THETA_CL = 0.053,  # L/h
-      THETA_V1 = 3.04,   # L
-      THETA_V2 = 8.78,   # L
-      THETA_Q  = 0.288   # L/h
+      THETA_CL = 0.053,  
+      THETA_V1 = 3.04,   
+      THETA_V2 = 8.78,   
+      THETA_Q  = 0.288   
     ),
     
     covariates = c("WT"),
@@ -391,7 +388,69 @@ Dalbavancin <- list(
         )
     }),
     
-    sigma = c(additive_a = 0, proportional_b = 0.0362)  # 3.62% proportional error
+    sigma = c(additive_a = 0, proportional_b = 0.0362)
+  ),
+  Banavent2025 = list(
+    ppk_model = rxode2::rxode2({
+      AUC(0) <- 0
+      centr(0) <- 0
+      Vc <- THETA_Vc * exp(ETA_Vc)
+      Cl <- THETA_Cl * exp(ETA_Cl)
+      Cc <- centr / Vc
+      d / dt(centr) <- -ke * centr
+      d / dt(AUC) <- Cc
+    }),
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_Cl = 0.036,
+      THETA_Vc = 17.9
+    ),
+    omega = lotri::lotri({
+      ETA_CL + ETA_Vc  ~
+        c(
+          log((20 / 100)^2 + 1),  
+          0, log((29 / 100)^2 + 1)
+        )
+    }),
+    sigma = c(additive_a = 0, proportional_b = 0.120)
+  ),
+  Chiriac2024 =  list(
+    ppk_model = rxode2::rxode2({
+      AUC(0) <- 0
+      centr(0) <- 0
+      periph(0) <- 0
+      V1   <- THETA_V1 * exp(ETA_V1)
+      V2   <- THETA_V2 * exp(ETA_V2)
+      Q    <- 0.476 
+      Cl   <- THETA_Cl * exp(ETA_Cl)
+      ke   <- Cl / V1
+      k12  <- Q / V1
+      k21  <- Q / V2
+      Cc   <- centr / V1
+      Cp   <- periph / V2
+      d / dt(centr) <- -ke * centr - k12 * centr + k21 * periph
+      d / dt(periph) <- k12 * centr - k21 * periph
+      d / dt(AUC) <- Cc
+    }),
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_Cl = 0.050,
+      THETA_V1 = 6.5,
+      THETA_V2 = 15.4
+    ),
+    omega = lotri::lotri({
+      ETA_Cl + ETA_V1 + ETA_V2 ~
+        c(0.230,
+          0, 0.260, 
+          0, 0, 0.410)
+    }),
+    sigma = c(additive_a = 0, proportional_b = 0.1)
   )
 )
 
@@ -1458,7 +1517,6 @@ server <- function(input, output, session) {
         width = 6,
         height = "auto",
         div(
-          # Display the date along with the number of days in parentheses
           h4(
             HTML(sprintf(
               "%s (%d days from last dose)",
@@ -1467,21 +1525,18 @@ server <- function(input, output, session) {
             style = "margin-bottom: 5px; font-weight: bold; color: #333;"
           ),
           p(
-            # Using HTML to format "f" in cursive and subscript for "24"
             HTML(sprintf("When estimated to be: %.2f mg·h/L", first_below_target_ab$AUC24)),
-            style = "font-size: 16px; color: #666;" # Font size and color for AUC
+            style = "font-size: 16px; color: #666;"
           ),
           p(
-            # Using HTML to make "min" a subscript
             HTML(sprintf("And total C<sub>min</sub>: %.1f mg/L", first_below_target_ab$Cc)),
-            style = "font-size: 16px; color: #666;" # Font size and color for Cmin
+            style = "font-size: 16px; color: #666;" 
           ),
-          style = "padding: 20px; text-align: center; background-color: #f9f9f9; border-radius: 5px;" # Background color and rounded corners
+          style = "padding: 20px; text-align: center; background-color: #f9f9f9; border-radius: 5px;" 
         )
       )
     })
     
-    # Render UI for the box which contains the data table
     output$box_parameters <- renderUI({
       renderUI({
         box(
