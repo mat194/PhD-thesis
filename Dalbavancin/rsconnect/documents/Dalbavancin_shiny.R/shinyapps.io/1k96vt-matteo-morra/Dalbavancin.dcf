@@ -1,0 +1,13 @@
+name: Dalbavancin
+title: Dalbavancin
+username: 1k96vt-matteo-morra
+account: 1k96vt-matteo-morra
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 16691201
+bundleId: 11597001
+url: https://1k96vt-matteo-morra.shinyapps.io/Dalbavancin/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Models

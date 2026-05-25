@@ -1,0 +1,35 @@
+---
+title: "Dalbavacin report"
+output: html_document
+date: "`r Sys.Date()`"
+params:
+   plot_dalba: NULL,
+   combined_plot: NULL,
+   doses: NULL,
+   patient_tb: NULL,
+   date_to_display: NULL, 
+   days_from_last_dose: NULL
+   first_below_target_ab: NULL
+   free_drug: NULL
+   target_mic: NULL
+   target_auc: NULL
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+params$combined_plot
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+params$plot_dalba
+```
+
+For the estimation the target AUC/MIC selected was `r params$target_auc` mg·h/L, with and a target MIC of `r params$target_mic` and a free drug estimation of `r params$free_drug * 100`%.
+
+According to the model averaging dalabavacin should be redose on the `r params$date_to_display` (`r params$days_from_last_dose` days from the last given dose) when the last fAUC0-24/MIC is estimated to be `r params$first_below_target_ab$AUC24`  mg·h/L with a corresponding Cmin of `r round(params$first_below_target_ab$Cc,2)` mg/L. 
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(params$patient_tb, caption = "Patient Parameters", align = "c")
+```
+

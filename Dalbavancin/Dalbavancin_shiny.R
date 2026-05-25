@@ -156,15 +156,15 @@ Dalbavancin <- list(
       TVCl <- THETA_Cl * (AGFR / 88.5) ^ 0.21
       Vc <- TVVc * exp(ETA_Vc)
       Cl <- TVCl * exp(ETA_Cl)
-      Vp <- THETA_Vp * exp(ETA_Vp)
-      Q <- THETA_Q * exp(ETA_Q)
+      Vp <- THETA_Vp
+      Q <- THETA_Q
       ke <- Cl / Vc
       k12 <- Q / Vc
       k21 <- Q / Vp
       Cc <- centr / Vc
       Cp <- periph / Vp
       d / dt(centr) <- -ke * centr - k12 * centr + k21 * periph
-      d / dt(periph) <- +k12 * centr - k21 * periph
+      d / dt(periph) <- k12 * centr - k21 * periph
       d / dt(AUC) <- Cc
     }),
     error_model = function(f, sigma) {
@@ -179,8 +179,9 @@ Dalbavancin <- list(
     ),
     covariates = c("ABW", "AGFR"),
     omega = lotri::lotri({
-      ETA_Cl + ETA_Vc + ETA_Vp + ETA_Q ~
-        c(4.096472, 0, 3.61458, 0, 0, 0, 0, 0, 0, 0)
+      ETA_Cl + ETA_Vc ~
+        c(4.096472, 
+          0, 3.61458)
     }),
     sigma = c(additive_a = 1.67, proportional_b = 0.22)
   ),
@@ -189,7 +190,7 @@ Dalbavancin <- list(
       AUC(0) <- 0
       centr(0) <- 0
       periph(0) <- 0
-      TVCl <- THETA_Cl * (eGFR / 93) ^ 0.0043
+      TVCl <- THETA_Cl * (eGFR / 93)^0.0043
       V1   <- THETA_V1 * exp(ETA_V1)
       V2   <- THETA_V2 * exp(ETA_V2)
       Q    <- THETA_Q  * exp(ETA_Q)
@@ -208,7 +209,7 @@ Dalbavancin <- list(
       g <- sigma[1] + sigma[2] * f
       return(g)
     },
-    
+    # Taken from final model column
     theta = c(
       THETA_Cl = 0.029,
       THETA_V1 = 6.14,
@@ -216,9 +217,12 @@ Dalbavancin <- list(
       THETA_Q  = 0.026
     ),
     covariates = c("eGFR"),
-    omega = lotri::lotri({
+    omega = lotri::lotri({ # reported as CV
       ETA_Cl + ETA_V1 + ETA_V2 + ETA_Q ~
-        c(0.0654, 0, 0.0255, 0, 0, 0.1213, 0, 0, 0, 0.2063)
+        c(log((31.76 / 100) ^ 2 + 1),
+          log((16.10 / 100) ^ 2 + 1), 0,
+          log((37.19 / 100) ^ 2 + 1), 0, 0, 
+          log((45.06 / 100) ^ 2 + 1), 0, 0, 0)
     }),
     sigma = c(additive_a = 0, proportional_b = 0.3392)
   ),
@@ -254,8 +258,8 @@ Dalbavancin <- list(
       
       Cc <- centr / V1
       d / dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph1 - k13 * centr + k31 * periph2
-      d / dt(periph1) <- +k12 * centr - k21 * periph1
-      d / dt(periph2) <- +k13 * centr - k31 * periph2
+      d / dt(periph1) <- k12 * centr - k21 * periph1
+      d / dt(periph2) <- k13 * centr - k31 * periph2
       d / dt(AUC)     <- Cc
     }),
     
@@ -284,7 +288,7 @@ Dalbavancin <- list(
     
     covariates = c("ALBUMIN", "CLCR", "WT", "AGE"),
   
-    omega = lotri::lotri({
+    omega = lotri::lotri({ # used the reported CV
       ETA_Cl + ETA_V2 + ETA_V1 + ETA_V3 ~
         c(log((22 / 100) ^ 2 + 1), 
           0, log((41 / 100) ^ 2 + 1), 
@@ -293,26 +297,26 @@ Dalbavancin <- list(
     }),
     sigma = c(additive_a = 0, proportional_b = 0.0362)
   ),
-  Cojutti2021 = list(
+  Cojutti2021 = list( #don't understand why they provide paramenter estimate for T1/2 and Vss as they were part of the structural model
     ppk_model = rxode2::rxode2({
       AUC(0) <- 0
       centr(0) <- 0
       periph(0) <- 0
       
-      CL = THETA_CL * (eGFR / 90)^THETA_CL_CLCR * exp(ETA_CL)
-      V1 = THETA_V1 * exp(ETA_V1)
-      V2 = THETA_V2 * exp(ETA_V2)
-      Q  = THETA_Q  * exp(ETA_Q)
+      CL <- THETA_CL * exp(ETA_CL)
+      V1 <- THETA_V1 * exp(ETA_V1)
+      V2 <- THETA_V2 * exp(ETA_V2)
+      Q  <- THETA_Q  * exp(ETA_Q)
       
-      k10 = CL / V1
-      k12 = Q / V1
-      k21 = Q / V2
+      k10 <- CL / V1
+      k12 <- Q / V1
+      k21 <- Q / V2
       
-      Cc = centr / V1
-
-      d/dt(centr)  = -k10 * centr - k12 * centr + k21 * periph
-      d/dt(periph) =  k12 * centr - k21 * periph
-      d/dt(AUC)    = Cc
+      Cc <- centr / V1
+      
+      d/dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+      d/dt(periph) <-  k12 * centr - k21 * periph
+      d/dt(AUC)    <- Cc
     }),
     
     error_model = function(f, sigma) {
@@ -322,46 +326,92 @@ Dalbavancin <- list(
     
     theta = c(
       THETA_CL = 0.106,      
-      THETA_V1 = 4.53,       
-      THETA_V2 = 31.9,       
-      THETA_Q  = 0.51,       
-      THETA_CL_CLCR = 0.5   
+      THETA_V1 = 17.40,       
+      THETA_V2 = 15.10,       
+      THETA_Q  = 0.103
     ),
     
-    covariates = c("eGFR"),
-    
-    omega = lotri::lotri({
+    omega = lotri::lotri({ #reported as CV
       ETA_CL + ETA_V1 + ETA_V2 + ETA_Q ~
         c(
-          log((20 / 100)^2 + 1),  
-          0, log((25 / 100)^2 + 1),  
-          0, 0, log((30 / 100)^2 + 1),  
+          log((36.21 / 100)^2 + 1),  
+          0, log((44.27 / 100)^2 + 1),  
+          0, 0, log((62.34 / 100)^2 + 1),  
           0, 0, 0, log((35 / 100)^2 + 1)  
         )
     }),
     
-    sigma = c(additive_a = 0, proportional_b = 0.15)
+    sigma = c(additive_a = 0, proportional_b = 0.18)
   ),
+  # Cojutti2024 = list(
+  #   ppk_model = rxode2::rxode2({
+  #     AUC(0) <- 0
+  #     centr(0) <- 0
+  #     periph(0) <- 0
+  #     
+  #     CL <- THETA_CL * (eGFR / 90)^THETA_CL_CLCR * exp(ETA_CL)
+  #     V1 <- THETA_V1 * exp(ETA_V1)
+  #     V2 <- THETA_V2 * exp(ETA_V2)
+  #     Q  <- THETA_Q  * exp(ETA_Q)
+  #     
+  #     k10 <- CL / V1
+  #     k12 <- Q / V1
+  #     k21 <- Q / V2
+  #     
+  #     Cc = centr / V1
+  # 
+  #     d/dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+  #     d/dt(periph) <-  k12 * centr - k21 * periph
+  #     d/dt(AUC)    <- Cc
+  #   }),
+  #   
+  #   error_model = function(f, sigma) {
+  #     g = sigma[1] + sigma[2] * f
+  #     return(g)
+  #   },
+  #   
+  #   theta = c(
+  #     THETA_CL = 0.106,      
+  #     THETA_V1 = 4.53,       
+  #     THETA_V2 = 31.9,       
+  #     THETA_Q  = 0.51,       
+  #     THETA_CL_CLCR = 0.5   
+  #   ),
+  #   
+  #   covariates = c("eGFR"),
+  #   
+  #   omega = lotri::lotri({ # reported as SD
+  #     ETA_CL + ETA_V1 + ETA_V2 + ETA_Q ~
+  #       c(
+  #         0.12^2,  
+  #         0, 0.14^2,  
+  #         0, 0, 0.47^2,  
+  #         0, 0, 0, 0.70^2  
+  #       )
+  #   }),
+  #   
+  #   sigma = c(additive_a = 0, proportional_b = 0.15)
+  # ),
   Baiardi2025 = list(
     ppk_model = rxode2::rxode2({
-      centr(0) = 0
-      periph(0) = 0
-      AUC(0) = 0
+      centr(0) <- 0
+      periph(0)<- 0
+      AUC(0) <- 0
       
-      CL = THETA_CL * (WT / 70)^0.75 * exp(ETA_CL)
-      V1 = THETA_V1 * (WT / 70)^1.0 * exp(ETA_V1)
-      V2 = THETA_V2 * (WT / 70)^1.0 * exp(ETA_V2)
-      Q  = THETA_Q  * (WT / 70)^0.75 * exp(ETA_Q)
+      CL <- THETA_CL * (WT / 70)^0.75 * exp(ETA_CL)
+      V1 <- THETA_V1 * (WT / 70) * exp(ETA_V1)
+      V2 <- THETA_V2 * (WT / 70) * exp(ETA_V2)
+      Q  <- THETA_Q  * (WT / 70)^0.75 * exp(ETA_Q)
       
-      k10 = CL / V1
-      k12 = Q / V1
-      k21 = Q / V2
+      k10 <- CL / V1
+      k12 <- Q / V1
+      k21 <- Q / V2
   
       Cc = centr / V1
       
-      d/dt(centr)  = -k10 * centr - k12 * centr + k21 * periph
-      d/dt(periph) =  k12 * centr - k21 * periph
-      d/dt(AUC)    = Cc
+      d/dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+      d/dt(periph) <-  k12 * centr - k21 * periph
+      d/dt(AUC)    <- Cc
     }),
     
     error_model = function(f, sigma) {
@@ -378,7 +428,7 @@ Dalbavancin <- list(
     
     covariates = c("WT"),
     
-    omega = lotri::lotri({
+    omega = lotri::lotri({ # Reported as CV
       ETA_CL + ETA_V1 + ETA_V2 + ETA_Q ~
         c(
           log((22 / 100)^2 + 1),  
@@ -387,17 +437,19 @@ Dalbavancin <- list(
           0, 0, 0, log((30 / 100)^2 + 1)  
         )
     }),
-    
     sigma = c(additive_a = 0, proportional_b = 0.0362)
   ),
   Banavent2025 = list(
     ppk_model = rxode2::rxode2({
       AUC(0) <- 0
       centr(0) <- 0
-      Vc <- THETA_Vc * exp(ETA_Vc)
-      Cl <- THETA_Cl * exp(ETA_Cl)
-      Cc <- centr / Vc
-      d / dt(centr) <- -ke * centr
+      V1 <- THETA_V1 * exp(ETA_V1)
+      CL <- THETA_CL * exp(ETA_CL)
+      
+      k10   <- CL/V1
+      Cc <- centr / V1
+      
+      d / dt(centr) <- -k10 * centr
       d / dt(AUC) <- Cc
     }),
     error_model = function(f, sigma) {
@@ -405,15 +457,15 @@ Dalbavancin <- list(
       return(g)
     },
     theta = c(
-      THETA_Cl = 0.036,
-      THETA_Vc = 17.9
+      THETA_CL = 0.036,
+      THETA_V1 = 17.9
     ),
-    omega = lotri::lotri({
-      ETA_CL + ETA_Vc  ~
+    omega = lotri::lotri({ # Reported as omega^2/SD^2/IIV
+      ETA_CL + ETA_V1  ~
         c(
-          log((20 / 100)^2 + 1),  
-          0, log((29 / 100)^2 + 1)
-        )
+          0.200,  
+          0, 0.290
+          )
     }),
     sigma = c(additive_a = 0, proportional_b = 0.120)
   ),
@@ -424,7 +476,7 @@ Dalbavancin <- list(
       periph(0) <- 0
       V1   <- THETA_V1 * exp(ETA_V1)
       V2   <- THETA_V2 * exp(ETA_V2)
-      Q    <- 0.476 
+      Q    <- THETA_Q 
       Cl   <- THETA_Cl * exp(ETA_Cl)
       ke   <- Cl / V1
       k12  <- Q / V1
@@ -442,13 +494,14 @@ Dalbavancin <- list(
     theta = c(
       THETA_Cl = 0.050,
       THETA_V1 = 6.5,
-      THETA_V2 = 15.4
+      THETA_V2 = 15.4,
+      THETA_Q = 0.476
     ),
-    omega = lotri::lotri({
+    omega = lotri::lotri({ # Reported as omega/SD
       ETA_Cl + ETA_V1 + ETA_V2 ~
-        c(0.230,
-          0, 0.260, 
-          0, 0, 0.410)
+        c(0.230^2,
+          0, 0.260^2, 
+          0, 0, 0.410^2)
     }),
     sigma = c(additive_a = 0, proportional_b = 0.1)
   )
@@ -1555,7 +1608,7 @@ server <- function(input, output, session) {
     })
     
     output$combinedTable <- renderDataTable({
-      datatable(patient_tb, options = list(dom = "t")) # 't' for table only without any control elements
+      datatable(patient_tb, options = list(dom = "t"))
     })
     
     # Save report ------------------------------------------------------------
@@ -1566,7 +1619,6 @@ server <- function(input, output, session) {
         paste(report_name, "-", Sys.Date(), ".html", sep = "")
       },
       content = function(file) {
-        # Use rmarkdown to render the report
         rmarkdown::render(
           "report_template.Rmd",
           output_file = file,
@@ -1582,7 +1634,7 @@ server <- function(input, output, session) {
             target_mic = target_mic,
             target_auc = target_auc
           ),
-          envir = new.env(parent = globalenv()) #to clean environment
+          envir = new.env(parent = globalenv())
         )
       }
     )    
