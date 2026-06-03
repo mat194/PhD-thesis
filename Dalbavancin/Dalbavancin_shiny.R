@@ -70,7 +70,7 @@ calculate_egfr <- function(age, serum_creatinine_mg_dl, gender) {
 
 calculate_metrics <- function(data, model_name) {
   N <- nrow(data)
-  predicted <- data$Cc
+  predicted <- data$Cc_tot   # always total Cc — see MAP loop: Cc_tot col is set to model_dt$Cc for all models
   observed <- data$Cc_observed
   weight <- data$weight
   
@@ -343,6 +343,76 @@ Dalbavancin <- list(
     
     sigma = c(additive_a = 0, proportional_b = 0.18)
   ),
+  Lodise2026 = list(
+    ppk_model = rxode2::rxode2({
+      AUC(0)     <- 0
+      centr(0)   <- 0
+      periph1(0) <- 0
+      periph2(0) <- 0
+      
+      CL <- THETA_CL * (CLCR / 101.26)^THETA_CL_CRCL * exp(ETA_CL)
+      
+      V1 <- THETA_V1 * (WT / 83.8)^THETA_V1_WT * exp(ETA_V1)
+      V2 <- THETA_V2 * (WT / 83.8)^THETA_V2_WT * (ALBUMIN / 2.8)^THETA_V2_ALB * exp(ETA_V2)
+
+      V3 <- THETA_V3 * (AGE / 56)^THETA_V3_AGE * (WT / 83.8)^THETA_V3_WT * exp(ETA_V3)
+      
+      Q2 <- THETA_Q2
+      Q3 <- THETA_Q3
+      
+      TV_A    <- THETA_A * (ALBUMIN / 2.8)^THETA_A_ALB
+      logit_A <- log(TV_A / (1 - TV_A)) + ETA_A
+      A       <- 1 / (1 + exp(-logit_A))
+      
+      k10 <- CL / V1
+      k12 <- Q2 / V1
+      k21 <- Q2 / V2
+      k13 <- Q3 / V1
+      k31 <- Q3 / V3
+      
+      Cc      <- centr / V1          # total concentration — posologyr fits this to observed TDM
+      Cc_free <- A * Cc^THETA_K      # unbound concentration — integrated into AUC for PD target
+
+      d / dt(centr)   <- -k10 * centr - k12 * centr + k21 * periph1 - k13 * centr + k31 * periph2
+      d / dt(periph1) <-  k12 * centr - k21 * periph1
+      d / dt(periph2) <-  k13 * centr - k31 * periph2
+      d / dt(AUC)     <- Cc_free
+    }),
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_CL      = 0.0658,   
+      THETA_CL_CRCL = 0.214,    
+      THETA_V1      = 5.67,     
+      THETA_V1_WT   = 0.57,     
+      THETA_V2      = 8.91,     
+      THETA_V2_WT   = 0.82,     
+      THETA_V2_ALB  = -0.806,   
+      THETA_V3      = 11.1,     
+      THETA_V3_AGE  = 0.628,    
+      THETA_V3_WT   = 0.559,    
+      THETA_Q2      = 0.0259,   
+      THETA_Q3      = 0.921,    
+      THETA_A       = 0.00136,  
+      THETA_A_ALB   = -0.782,   
+      THETA_K       = 1.32      
+    ),
+    covariates = c("CLCR", "WT", "ALBUMIN", "AGE"),
+    omega = lotri::lotri({
+      ETA_CL + ETA_V1 + ETA_V3 + ETA_V2 + ETA_A ~
+        c(
+          0.0508,                          
+          0.0264,  0.0386,                 
+          0.0416,  0.0478,  0.0861,        
+          0,       0,       0,    0.0897,  
+          0,       0,       0,    0,  0.106
+        )
+    }),
+    sigma = c(additive_a = 0, proportional_b = 0.13),
+    auc_is_free = TRUE   # AUC state integrates unbound Cc (via the A*Cc^k binding model)
+  ),
   # Cojutti2024 = list(
   #   ppk_model = rxode2::rxode2({
   #     AUC(0) <- 0
@@ -407,7 +477,7 @@ Dalbavancin <- list(
       k12 <- Q / V1
       k21 <- Q / V2
   
-      Cc = centr / V1
+      Cc <- centr / V1
       
       d/dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
       d/dt(periph) <-  k12 * centr - k21 * periph
@@ -795,9 +865,6 @@ ui <- dashboardPage(
 
 server <- function(input, output, session) {
   # Initial modal fo user agreement -----------------------------------------
-  session$onSessionEnded(function() { 
-    stopApp()
-  })
   
   showModal(modalDialog(
     title = "Dalbavancin Precision Dosing Tool",
@@ -845,7 +912,7 @@ server <- function(input, output, session) {
       ADDL = numeric(),
       II = numeric()
     ),
-    tdm = tibble(TIME = as.POSIXct(character()), DV = numeric())
+    tdm = tibble(TIME = as.POSIXct(character()), DV = numeric(), DVID = character())
   )
   
   
@@ -890,6 +957,7 @@ server <- function(input, output, session) {
       rv$creatinines <- state$creatinines
       rv$doses <- state$doses
       rv$tdm <- state$tdm
+      rv$albumines <- state$albumines
       updateNumericInput(session, "target_auc", value = state$target_auc)
       updateNumericInput(session, "target_cum_auc", value = state$target_cum_auc)
       updateNumericInput(session, "target_mic", value = state$target_mic)
@@ -957,8 +1025,7 @@ server <- function(input, output, session) {
   input_handlers <- list(
     list(add = "addWeight", remove = "removeWeight", time = "weight_time", value = "weight", var = "weights", col = "WT"),
     list(add = "addCreatinine", remove = "removeCreatinine", time = "creatinine_time", value = "creatinine", var = "creatinines", col = "CREATININE"),
-    list(add = "addAlbumin", remove = "removeAlbumin", time = "albumin_time", value = "albumin", var = "albumines", col = "ALBUMIN"),
-    list(add = "addTDM", remove = "removeTDM", time = "tdm_time", value = "tdm", var = "tdm", col = "DV")
+    list(add = "addAlbumin", remove = "removeAlbumin", time = "albumin_time", value = "albumin", var = "albumines", col = "ALBUMIN")
   )
   
   # Register all handlers in one loop
@@ -974,7 +1041,27 @@ server <- function(input, output, session) {
       rv = rv
     )
   })
-  
+
+  # TDM handlers — separate from the generic loop to include DVID = "Cc"
+  observeEvent(input$addTDM, {
+    new_entry <- tibble(
+      TIME = as.POSIXct(input$tdm_time, format = "%d/%m/%Y %H:%M"),
+      DV   = input$tdm,
+      DVID = "Cc"
+    ) %>%
+      distinct(TIME, .keep_all = TRUE)
+
+    if (!any(rv$tdm$TIME == new_entry$TIME)) {
+      rv$tdm <- bind_rows(rv$tdm, new_entry)
+    }
+  })
+
+  observeEvent(input$removeTDM, {
+    if (nrow(rv$tdm) > 0) {
+      rv$tdm <- rv$tdm[-nrow(rv$tdm), ]
+    }
+  })
+
   # Add dose event ----------------------------------------------------------
   # It is simpler in contrast to vancomycin beacuse of the way doses are added, just one at a time
   
@@ -1135,9 +1222,14 @@ server <- function(input, output, session) {
       ) %>%
       ungroup() 
     
-    combined_data <- bind_rows(
-      combined_data,
-      rv$tdm %>% mutate(EVID = 0))
+    tdm_data <- rv$tdm %>% mutate(EVID = 0)
+    if (!"DVID" %in% names(tdm_data)) {
+      tdm_data <- tdm_data %>% mutate(DVID = "Cc")
+    }
+    combined_data <- bind_rows(combined_data, tdm_data)
+    if (!"DVID" %in% names(combined_data)) {
+      combined_data <- combined_data %>% mutate(DVID = NA_character_)
+    }
     
     first_dose_time <- dose_info()$first_dose_time
     time_seq <- dose_info()$max_time_seq
@@ -1258,16 +1350,31 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
+    if (nrow(tdm) == 0) {
+      shinyalert(
+      title = "Error",
+      text = "No TDM data",
+      type = "error"
+      )
+      return(NULL)
+    }
+    
     m_out <- list()
     error_log <- list()
     
     for (i in seq_along(model_list)) {
       result <- tryCatch({
         m_i <- poso_estim_map(patient_data_for_map2, model_list[[i]], return_model = TRUE, return_ofv = TRUE)
-        
+
         # Store successful result
+        model_dt <- data.table::data.table(m_i$model)
         m_out[[i]] <- cbind(
-          data.table::data.table(m_i$model)[, .(time, Cc, AUC)],
+          model_dt[, .(time, Cc, AUC)],
+          # Cc_tot: total plasma concentration for calculate_metrics (always total, never unbound).
+          # For Lodise2026, the rxode2 variable `Cc` is already total (centr/V1) and there is
+          # no separate Cc_tot ODE variable, so the else-branch is taken and gives total Cc.
+          # For all other models, Cc is also total, so both branches yield the same value.
+          Cc_tot = if ("Cc_tot" %in% names(model_dt)) model_dt$Cc_tot else model_dt$Cc,
           ofv = m_i$ofv,
           LL = exp(-0.5 * m_i$ofv),
           model_name = model_list_names[[i]],
@@ -1287,8 +1394,18 @@ server <- function(input, output, session) {
     
     m_dt_out <- data.table::as.data.table(do.call(rbind, m_out))
     m_dt_out[, weight := LL / sum(unique(LL))]
-    m_dt_out[, MoA_IPRED := sum(Cc * weight), by = time]
-    m_dt_out[, MoA_AUC := sum(AUC * weight), by = time]
+
+    # Normalise AUC to unbound (free) units for the fAUC/MIC calculation only.
+    # Lodise2026 already integrates unbound Cc in its AUC state variable;
+    # all other models integrate total Cc. Cc itself is kept as total everywhere
+    # (plots, box) — only the AUC used in prova is placed on a free-drug scale.
+    free_auc_models <- names(model_list)[
+      sapply(model_list, function(m) isTRUE(m$auc_is_free))
+    ]
+    m_dt_out[, AUC_free := data.table::fifelse(model_name %in% free_auc_models, AUC, AUC * free_drug)]
+
+    m_dt_out[, MoA_IPRED := sum(Cc       * weight), by = time]  # total Cc — for plots
+    m_dt_out[, MoA_AUC   := sum(AUC_free * weight), by = time]  # unbound AUC — for fAUC/MIC
     
     
     # Get the model avaraged values of Cc and AUC to use later to calculate the
@@ -1301,7 +1418,7 @@ server <- function(input, output, session) {
     
     
   # Capire qui cosa ha senso fare per le metriche, tenere solo quella di avarege?
-    # se si allora prendi prova e calcola su qullo, non sullo split
+    # se si allora prendi prova e calcola su quello, non sullo split
     data_metrics <- m_dt_out %>%
       left_join(patient_data_for_map %>%
                   select(Cc_observed = DV, time = TIME), by = "time") %>%
@@ -1364,7 +1481,7 @@ server <- function(input, output, session) {
     data_plot <- result %>%
       mutate(Cocentration = round(Cc)) %>%
       filter(!(Cocentration <= 0.5 & time > dose_info$max_duration)) %>%
-      mutate(Time = dose_info$first_dose_time + as.difftime(time, units = "hours")) # in this way I exclude low values but after infusion (considering worst infusion time)
+      mutate(Time = dose_info$first_dose_time + as.difftime(time, units = "hours"))
     
     data_plot_map <- quantiles_map %>%
       filter(time <= max(data_plot$time)) %>%
@@ -1376,7 +1493,7 @@ server <- function(input, output, session) {
       mutate(Time = dose_info$first_dose_time + as.difftime(time, units = "hours")) %>%
       left_join(data_plot %>% select(Time, Cocentration), by = "Time") %>%
       mutate(
-        Error = round((value - Cocentration) / value, 2) * 100, #this is the relative (to the population esitmations) prediction error 
+        Error = round((value - Cocentration) / value, 2) * 100
       )
     
     plot_dalba <- plot_ly() %>%
@@ -1420,14 +1537,14 @@ server <- function(input, output, session) {
           yanchor = "bottom"
         )
       )
-    
-    
+
+
     # Plot MoA
-    data_prova <- m_dt_out %>% 
-      filter(!(Cc <= 0.5 & time > dose_info$max_duration)) %>% 
+    data_prova <- m_dt_out %>%
+      filter(!(Cc <= 0.5 & time > dose_info$max_duration)) %>%
       mutate(Time = dose_info$first_dose_time + as.difftime(time, units = "hours"),
-             MoA_IPRED = round(MoA_IPRED,2),
-             Cc = round(Cc,2)) 
+             MoA_IPRED = round(MoA_IPRED, 2),
+             Cc = round(Cc, 2))
     
     plot_moa <- plot_ly() %>%
       add_lines(
@@ -1514,7 +1631,7 @@ server <- function(input, output, session) {
     # Common part to get times  and targets
     auc_data_plot <- prova %>%
       mutate(
-        AUC = (AUC / target_mic * free_drug)
+        AUC = AUC / target_mic  # AUC already in unbound units after normalisation above
       ) %>%
       filter(time %% 24 == 0) %>% # important to filter time based on 24 hour time/days
       mutate(AUC24 = round(AUC - lag(AUC, default = 0))) %>%
@@ -1558,7 +1675,16 @@ server <- function(input, output, session) {
     output$box_auc24 <- renderUI({
       date_to_display <- dose_info$first_dose_time + as.difftime(round(first_below_target_ab$time / 24), units = "days")
       days_from_last_dose <- round(first_below_target_ab$time/24) - round(from/24)
-      
+
+      # format() uses the system locale for %B, which gives non-English month
+      # names on non-English systems. Use a fixed English lookup instead.
+      en_months <- c("January","February","March","April","May","June",
+                     "July","August","September","October","November","December")
+      date_formatted <- sprintf("%d %s %d",
+                                as.integer(format(date_to_display, "%d")),
+                                en_months[as.integer(format(date_to_display, "%m"))],
+                                as.integer(format(date_to_display, "%Y")))
+
       box(
         title = tagList(
           icon("clock"),
@@ -1573,7 +1699,7 @@ server <- function(input, output, session) {
           h4(
             HTML(sprintf(
               "%s (%d days from last dose)",
-              format(date_to_display, "%d %B %Y"), days_from_last_dose
+              date_formatted, days_from_last_dose
             )),
             style = "margin-bottom: 5px; font-weight: bold; color: #333;"
           ),
