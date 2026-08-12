@@ -1,0 +1,13 @@
+name: Meropenem
+title:
+username: 1k96vt-matteo-morra
+account: 1k96vt-matteo-morra
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17460752
+bundleId: 12077842
+url: https://1k96vt-matteo-morra.shinyapps.io/Meropenem/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: meropenem.docx|meropenem_analysis.R|Meropenem_shiny_v1.R
