@@ -1,14 +1,12 @@
-library(posologyr)
-library(tidyverse)
-library(readxl)
-library(ggrepel)
-library(flextable)
-library(gtsummary)
+library(posologyr); library(tidyverse); library(readxl)
+library(ggrepel)  ; library(flextable); library(gtsummary)
 library(janitor)
+
+source("~/PhD-thesis/Vancomycin/models.R")
 
 # Load data ---------------------------------------------------------------
 
-df1 <- read_excel("Vancomycin/Data/data_bloomy.xlsx") %>% filter(!is.na(LD))
+df1 <- read_excel("Vancomycin/Data/data_bloomy.xlsx") %>% filter(!is.na(LD)) |> mutate(centro = "Verona")
 df_init <- read_excel("Vancomycin/Data/udine.xlsx") %>% 
   janitor::clean_names() %>% 
   dplyr::filter(!is.na(record_id)) %>% 
@@ -24,14 +22,21 @@ df_init <- read_excel("Vancomycin/Data/udine.xlsx") %>%
     DV = conc,
     altezza = altezza_m,
     peso =  peso_kg,
-    vm = NA_character_,
+    vm = 0,
     CRRT = crrt, 
     LD = ld,
     dialisi, 
     creatinina ,
     ii_interdose_interval,
-    addl
-  )
+    addl,
+    centro = "Udine"
+  ) |> 
+  bind_rows(df1) |>
+  group_by(centro, record_id) |>
+  mutate(
+    ID = cur_group_id()
+  ) |>
+  ungroup()
 
 dose_expanded  <- df_init %>% 
   dplyr::filter(EVID == 1) %>% 
@@ -61,9 +66,8 @@ dose_expanded  <- df_init %>%
   tidyr::fill(creatinina, .direction = "updown")
 
 df <- dplyr::bind_rows(df_init %>% filter(EVID == 0), dose_expanded) %>%
-  arrange(record_id, TIME) %>% 
-  dplyr::select(any_of(names(df1))) %>% 
-  filter(!is.na(sex))
+  arrange(ID, TIME) |> 
+  filter_out(is.na(sex))
 
 na_sex <- df %>% filter(is.na(sex)) %>% pull(record_id)
 na_creat <- df %>% filter(is.na(creatinina)) %>% pull(record_id)
@@ -113,12 +117,6 @@ df_patients <- df %>%
       )
     )
   ) %>%
-  ungroup() %>% 
-  group_by(record_id) %>% 
-  mutate(
-    ID =cur_group_id() ,
-  ) %>% 
-  ungroup() %>% 
   rename(
     WT = peso,
     DIAL = dialisi
@@ -127,304 +125,11 @@ df_patients <- df %>%
 
 # Statistiche -------------------------------------------------------------
 
-patients <- df_patients %>% 
-  filter(!is.na(CLCREAT)) %>% 
-  select(ID) %>% 
-  distinct() %>% 
-  pull()
-
 ci <- df_patients %>% 
-  filter(DUR == 24) %>% 
-  select(ID) %>% 
-  distinct() %>% 
-  pull()
- 
-ci2 <- df_patients %>% 
   filter(DUR == 24) %>% 
   select(record_id) %>% 
   distinct() %>% 
   pull()
-
-
-# Modelli -----------------------------------------------------------------
-
-models_vancomycin <- list(
-  Goti2018 = list(
-    ppk_model   = rxode2::rxode2({
-      centr(0) = 0;
-      TVCl  = THETA_Cl*(CLCREAT/120)^0.8*(0.7^DIAL);
-      TVVc  = THETA_Vc*(WT/70)*(0.5^DIAL);
-      TVVp  = THETA_Vp;
-      TVQ   = THETA_Q;
-      Cl    = TVCl*exp(ETA_Cl);
-      Vc    = TVVc*exp(ETA_Vc);
-      Vp    = TVVp*exp(ETA_Vp);
-      Q     = TVQ;
-      ke    = Cl/Vc;
-      k12   = Q/Vc;
-      k21   = Q/Vp;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr - k12*centr + k21*periph;
-      d/dt(periph) = + k12*centr - k21*periph;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl=4.5, THETA_Vc=58.4, THETA_Vp=38.4,THETA_Q=6.5),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc + ETA_Vp + ETA_Q ~
-        c(0.147,
-          0, 0.510,
-          0, 0, 0.282,
-          0, 0, 0, 0)}),
-    sigma = c(additive_a = 3.4, proportional_b = 0.227),
-    covariates = c("CLCREAT","WT","DIAL")
-  ),
-  
-  Roberts2011 = list(
-    ppk_model   = rxode2::rxode({
-      centr(0) = 0;
-      TVCl  = THETA_Cl*(CLCREAT/100);
-      TVVc  = THETA_Vc*(WT);
-      Cl    = TVCl*exp(ETA_Cl);
-      Vc    = TVVc*exp(ETA_Vc);
-      ke    = Cl/Vc;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl=4.58, THETA_Vc=1.53),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc ~
-        c(0.375379779^2,
-          0, 0.361827976^2)}),
-    sigma = c(additive_a = 2.4, proportional_b = 0.227),
-    covariates = c("CLCREAT","WT")
-  ),
-  
-  Buelga2015 = list(
-    ppk_model   = rxode2::rxode({
-      centr(0) = 0;
-      TVCl  = THETA_Cl * CLCREAT * 0.06;# CrCL is in L/h not ml/min
-      TVVc  = THETA_Vc * WT;
-      Cl    = TVCl * exp(ETA_Cl);
-      Vc    = TVVc * exp(ETA_Vc);
-      ke    = Cl/Vc;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl=1.08, THETA_Vc=0.98),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc ~
-        c( log((28.16/ 100)^2 + 1),
-           0, log((37.15/ 100)^2 + 1))}),
-    sigma = c(additive_a = 3.52, proportional_b = 0),
-    covariates = c("CLCREAT","WT")
-  ),
-
-  Adane2015 = list(
-    ppk_model   = rxode2::rxode({
-      centr(0) = 0;
-      TVCl  = THETA_Cl * (CLCREAT/125);
-      TVVc  = THETA_Vc * WT;
-      Cl    = TVCl * exp(ETA_Cl);
-      Vc    = TVVc * exp(ETA_Vc);
-      ke    = Cl/Vc;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl= 6.54, THETA_Vc= 0.51),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc ~
-        c( log((26.7/ 100)^2 + 1),
-           0, log((23.9/ 100)^2 + 1))}),
-    sigma = c(additive_a = 0, proportional_b = 0.189),
-    covariates = c("CLCREAT","WT")
-  ),
-  Lopis2006 = list(
-    ppk_model   = rxode2::rxode2({
-      centr(0) = 0;
-      TVCl  = THETA_Cl1 * CLCREAT + THETA_Cl2 * WT ;
-      TVVc  = THETA_Vc * WT;
-      TVVp  = THETA_Vp * WT;
-      TVQ   = THETA_Q;
-      Cl    = TVCl*exp(ETA_Cl);
-      Vc    = TVVc*exp(ETA_Vc);
-      Vp    = TVVp*exp(ETA_Vp);
-      Q     = TVQ;
-      ke    = Cl/Vc;
-      k12   = Q/Vc;
-      k21   = Q/Vp;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr - k12*centr + k21*periph;
-      d/dt(periph) = + k12*centr - k21*periph;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl1=0.034, THETA_Cl2=0.015, THETA_Vc=0.414, THETA_Vp=1.32,THETA_Q=7.48),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc + ETA_Vp ~
-        c( log((29.2/ 100)^2 + 1),
-           0, log((36.4/ 100)^2 + 1),
-           0, 0, log((39.8/ 100)^2 + 1))}),
-    sigma = c(additive_a = 23.9, proportional_b = 0.185),
-    covariates = c("CLCREAT","WT")
-  ),
-  Okada2018  = list(
-    ppk_model   = rxode2::rxode2({
-      centr(0) = 0;
-      TVCl  = THETA_Cl*(CLCREAT/113)^0.78;
-      TVVc  = THETA_Vc*(WT/59.4)^0.70;
-      TVVp  = THETA_Vp;
-      TVQ   = THETA_Q;
-      Cl    = TVCl*exp(ETA_Cl);
-      Vc    = TVVc*exp(ETA_Vc);
-      Vp    = TVVp*exp(ETA_Vp);
-      Q     = TVQ;
-      ke    = Cl/Vc;
-      k12   = Q/Vc;
-      k21   = Q/Vp;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr - k12*centr + k21*periph;
-      d/dt(periph) = + k12*centr - k21*periph;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl=4.25, THETA_Vc=39.2, THETA_Vp=56.1,THETA_Q=1.95),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc + ETA_Vp  ~
-        c( log((25.2/ 100)^2 + 1),
-           0, log((14.2/ 100)^2 + 1),
-           0, 0, log((66.9/ 100)^2 + 1))}),
-    sigma = c(additive_a = 0, proportional_b = 0.172),
-    covariates = c("CLCREAT","WT")
-  ),
-    Donadello2014 = list(
-      ppk_model   = rxode2::rxode2({
-        centr(0) = 0;
-        if (CRRT == 1){
-          TVCl  = 0.6;
-        } else {
-          TVCl  = 1;
-        }
-        TVVc  = THETA_Vc;
-        TVVp  = THETA_Vp;
-        TVQ   = THETA_Q;
-        Cl    = THETA_Cl * TVCl *exp(ETA_Cl);
-        Vc    = TVVc*exp(ETA_Vc);
-        Vp    = TVVp*exp(ETA_Vp);
-        Q     = TVQ;
-        ke    = Cl/Vc;
-        k12   = Q/Vc;
-        k21   = Q/Vp;
-        Cc    = centr/Vc;
-        d/dt(centr)  = - ke*centr - k12*centr + k21*periph;
-        d/dt(periph) = + k12*centr - k21*periph;
-        d/dt(AUC)    = Cc;
-      }),
-      error_model = function(f,sigma){
-        g <- sigma[1] + sigma[2]*f
-        return(g)
-      },
-      theta = c(THETA_Cl = 3.7, THETA_Vc=31.8, THETA_Vp=57.1,THETA_Q=3.6),
-      omega = lotri::lotri({ETA_Cl + ETA_Vc + ETA_Vp  ~
-          c( log((16.4/ 100)^2 + 1),
-             0, log((47/ 100)^2 + 1),
-             0, 0, log((101/ 100)^2 + 1))}),
-      sigma = c(additive_a = 0, proportional_b = 0.085),
-      covariates = c("CRRT")
-    ),
-  Medellin2017 = list(
-    ppk_model   = rxode2::rxode({
-      centr(0) = 0;
-      if (vm == 0){
-        TVCl  = (CLCREAT/100)^0.75;
-      } else {
-        TVCl  = (CLCREAT/100)^0.75 * 0.8;
-      }
-      TVVc  = THETA_Vc * WT;
-      Cl    = THETA_Cl * TVCl *exp(ETA_Cl);
-      Vc    = TVVc*exp(ETA_Vc);
-      ke    = Cl/Vc;
-      Cc    = centr/Vc;
-      d/dt(centr)  = - ke*centr;
-      d/dt(AUC)    = Cc;
-    }),
-    error_model = function(f,sigma){
-      g <- sigma[1] + sigma[2]*f
-      return(g)
-    },
-    theta = c(THETA_Cl=2.86, THETA_Vc=1.03),
-    omega = lotri::lotri({ETA_Cl + ETA_Vc ~
-        c( log((28.4/ 100)^2 + 1),
-           0, log((49.1/ 100)^2 + 1))}),
-    sigma = c(additive_a = 4.3, proportional_b = 0),
-    covariates = c("CLCREAT","WT","vm")
-  )
-  )
-  # Thomson2009 = list(
-  #   ppk_model   = rxode2::rxode2({
-  #     centr(0)  = 0;
-  #     periph(0) = 0;
-  #     AUC(0)    = 0;
-  #     TVCl  = THETA_Cl * (1 + 0.0154 * (CLCREAT - 66));
-  #     TVVc  = THETA_Vc;
-  #     TVVp  = THETA_Vp;
-  #     TVQ   = THETA_Q;
-  #     Cl    = TVCl*exp(ETA_Cl);
-  #     Vc    = TVVc*exp(ETA_Vc);
-  #     Vp    = TVVp*exp(ETA_Vp);
-  #     Q     = TVQ*exp(ETA_Q);
-  #     ke    = Cl/Vc;
-  #     k12   = Q/Vc;
-  #     k21   = Q/Vp;
-  #     Cc    = centr/Vc;
-  #     d/dt(centr)  = - ke*centr - k12*centr + k21*periph;
-  #     d/dt(periph) = + k12*centr - k21*periph;
-  #     d/dt(AUC)    = Cc;
-  #   }),
-  #   error_model = function(f,sigma){
-  #     g <- sigma[1] + sigma[2]*f
-  #     return(g)
-  #   },
-  #   theta = c(THETA_Cl=2.99, THETA_Vc=0.732, THETA_Vp=0.675,THETA_Q=2.28),
-  #   omega = lotri::lotri({ETA_Cl + ETA_Vc + ETA_Vp + ETA_Q ~
-  #       c( log((27/ 100)^2 + 1),
-  #          0, log((15/ 100)^2 + 1),
-  #          0, 0, log((130/ 100)^2 + 1),
-  #          0, 0, 0, log((49/ 100)^2 + 1))}),
-  #   sigma = c(additive_a = 1.6, proportional_b = 0.15),
-  #   covariates = c("CLCREAT")
-  # )
-
-
-# df_patients <- data.frame(
-#   ID = rep(1:100, each = 4),  # Ten patients, each with 4 time points
-#   TIME = rep(c(0.0, 13.0, 24.2, 48.0), times = 100),
-#   DV = c(NA, 12, NA, 9.5) + rnorm(40, 0, 1),  # Random variation in DV values
-#   AMT = rep(c(2000, 0, 1000, 0), times = 100),
-#   DUR = rep(c(2, NA, 2, NA), times = 100),
-#   EVID = rep(c(1, 0, 1, 0), times = 100),
-#   CLCREAT = round(runif(10, 50, 80)),  # Random creatinine clearance values
-#   WT = round(runif(10, 60, 90)),  # Random weights
-#   DIAL = sample(c(0, 1), 10, replace = TRUE)  # Random dialysis status
-# )
 
 
 # Population simulation ---------------------------------------------------
@@ -452,8 +157,9 @@ results <- list()
 max_time <- max(df_patients$TIME, na.rm = TRUE)
 
 models_to_use <- setdiff(names(models_vancomycin), "Medellin2017")
-#unique(population_df$ID)
-for (i in 40:81) {
+
+for (i in unique(population_df$ID)) {
+  message("Processing item ", i, " of ", length(unique(population_df$ID)))
   patient_data_for_pop <- population_df %>% 
     filter(ID == i) %>% 
     mutate(
@@ -472,6 +178,7 @@ for (i in 40:81) {
   
   # Iterate over each model in models_vancomycin
   for (model_name in models_to_use) {
+    message("Testing model ", model_name)
     model <- models_vancomycin[[model_name]]
     
     sim_results <- posologyr::poso_simu_pop(
@@ -480,7 +187,7 @@ for (i in 40:81) {
       n_simul = 0
     )
     
-    sim_results$model$time <- seq(0, max_time, b=0.1)
+    sim_results$model$time <- seq(0, max_time, b = 0.1)
     
     for (j in 1:nrow(doses_i)) {
       dose <- doses_i[j, ]
@@ -699,7 +406,7 @@ for (i in unique(population_df$ID)) {
   }
 }
 
-save(results2, file = "udine_map.Rdata" )
+#save(results2, file = "udine_map.Rdata" )
 
 combined_results2 <- list()
 for (model_name in names(models_vancomycin)) {
@@ -827,7 +534,7 @@ plotMAPE <- ggplot(df_combinato, aes(x = Model, y = rRMSE, fill = method)) +
 ggsave("plotrRMSE.png", plot = plotMAPE, width = 10, height = 6, dpi = 300)
 
 
-#COmbined plots
+#Combined plots
 plot_rBias3 <- ggplot(df_combinato, aes(x = Model, y = rBias, color = method)) +
   geom_point(position = position_dodge(width = 0.5), size = 2) +
   geom_errorbar(aes(ymin = rBias_Lower_CI, ymax = rBias_Upper_CI),
