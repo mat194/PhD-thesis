@@ -85,29 +85,72 @@ meroAddRemoveButtons <- function(add_id, remove_id, width = 2) {
 
 # ── Model / patient-type mapping ──────────────────────────────────────────────
 
+# Source population of every model, shown next to its name in the selector.
+# "mixed" = the source cohort contained both CRRT and non-CRRT patients and the
+# model has an explicit CRRT/RRT switch, so it is valid on either side of it.
+model_population <- c(
+  An_2023              = "mixed ICU + CRRT (CRRT switch)",
+  Boonpeng_2022        = "general ICU, sepsis/shock",
+  Burger_2018          = "mixed ICU + CRRT (CRRT switch)",
+  Chung_2017           = "hospitalised nonobese / obese / morbidly obese",
+  Ehmann_2019          = "general ICU, no RRT",
+  Eisert_2021          = "general ICU",
+  Gijsen_2022          = "general ICU",
+  Grensemann_2020      = "ACLF ± RRT",
+  Hanberg_2018         = "general ICU",
+  Isla_2008            = "CRRT only (CVVH/CVVHDF)",
+  Jaruratanasirikul_2015 = "severe sepsis (no sigma → excluded)",
+  Kang_2022            = "mixed ICU + CRRT (CRRT switch)",
+  Lan_2022             = "critically ill, pulmonary infection",
+  Lee_2021             = "general ICU ± ECMO",
+  Ha_Lee_2021          = "ECMO",
+  Minichmayr_2018      = "general ICU",
+  Yoko_2020            = "general ICU",
+  OJeanson_2021        = "mixed ICU + RRT (modality switch)",
+  Onichimowski_2020    = "CRRT only",
+  Padulles_Zamora_2019 = "general ICU",
+  Roberts_2009         = "general ICU",
+  Selig_2022           = "burns ± CVVH",
+  Shekar_2014          = "ECMO ± RRT (RRT switch)",
+  Ulldemolins_2015     = "CRRT only, septic shock",
+  Westermann_2021      = "SLED + CVVHD, continuous infusion",
+  Wicha_2024           = "CNS infection (plasma + CSF)",
+  Rancic_2024          = "general ICU (implausible V → excluded)",
+  Troisi_2024          = "general ICU, continuous infusion"
+)
+
 model_by_type <- list(
-  # General ICU: standard critically ill patients — CrCl/eGFR/ALB-based models.
-  # Includes models with sepsis/shock/comorbidity flags (shown dynamically).
-  # Jaruratanasirikul_2015 excluded: sigma = 0 → MAP likelihood undefined.
+  # General ICU: cohorts without renal replacement, plus the non-CRRT branch of
+  # the mixed-cohort models (their CRRT/RRT switch stays 0 here).
+  # Excluded from defaults: Jaruratanasirikul_2015 (sigma = 0 -> MAP likelihood
+  # undefined) and Rancic_2024 (published V = 2.05 L, non-physiological).
   "General ICU" = c(
     "Ehmann_2019", "Eisert_2021", "Gijsen_2022", "Hanberg_2018",
     "Lee_2021", "Minichmayr_2018", "Padulles_Zamora_2019",
     "Roberts_2009", "Yoko_2020", "Troisi_2024",
-    "Ulldemolins_2015",   # CrCl + urine output — general ICU
+    "Chung_2017",         # obesity cohort: CrCl only, no body-size term
+    "Lan_2022",           # pulmonary infection: CKD-EPI eGFR on CL
     "Boonpeng_2022",      # CrCl + ALB + shock flag
-    "Isla_2008",          # CrCl + SEPSIS flag
-    "Rancic_2024"         # CrCl + WBC + comorbidities
+    "An_2023", "Burger_2018", "Kang_2022"   # mixed cohorts, CRRT switch = 0
   ),
-  # CRRT / CVVHDF: continuous renal replacement (all modalities)
+  # CRRT / CVVHDF: CRRT-only cohorts plus the mixed-cohort models with their
+  # CRRT switch = 1 (auto-set when this patient type is selected).
   "CRRT / CVVHDF" = c(
-    "An_2023", "Burger_2018", "Kang_2022", "Shekar_2014", "Onichimowski_2020"
+    "Isla_2008",          # CRRT-only: measured CLCR + septic/polytrauma
+    "Onichimowski_2020",  # CRRT-only: albumin on V1
+    "Ulldemolins_2015",   # CRRT-only, septic shock: residual diuresis on CL
+    "An_2023", "Burger_2018", "Kang_2022"   # mixed cohorts, CRRT switch = 1
   ),
-  # Intermittent haemodialysis: IHD / SLED — modality flags + session timing
-  "Intermittent haemodialysis (IHD)" = c(
+  # Prolonged intermittent / semi-continuous RRT (SLED, PIRRT) — modality flags
+  # + session timing. Neither model covers classical 4-h intermittent HD:
+  # Westermann_2021 was built on SLED + CVVHD (and under continuous infusion),
+  # and OJeanson_2021 has no IHD indicator, only continuous / semi-continuous.
+  "Prolonged intermittent RRT (SLED / semi-continuous)" = c(
     "OJeanson_2021", "Westermann_2021"
   ),
-  # ECMO: extracorporeal membrane oxygenation — ECMO flow rate covariate
-  "ECMO" = c("Ha_Lee_2021"),
+  # ECMO: Ha_Lee has the ECMO flow covariate; Shekar_2014 is an ECMO-matched
+  # cohort with an RRT switch (tick 'any RRT' if the ECMO patient is dialysed).
+  "ECMO" = c("Ha_Lee_2021", "Shekar_2014"),
   # Burns: burn patients ± CVVH — TBSA + LBM covariates
   "Burns" = c("Selig_2022"),
   # ACLF: acute-on-chronic liver failure — ACLF binary flag
@@ -126,10 +169,12 @@ cov_to_group <- list(
   aclf     = c("ACLF"),
   shock    = c("shock"),
   sepsis   = c("SEPSIS"),
+  clcrurine = c("CLCR_urine"),
   ecmo     = c("LPM"),
   csf      = c("IL6_CSF"),
   diur     = c("DIUR"),
-  dialysis = c("DIA_C", "DIA_SC", "t_Dial"),
+  dialysis = c("DIA_C", "DIA_SC"),   # RRT modality indicator (OJeanson_2021)
+  dialsess = c("t_Dial"),            # session timing (Westermann_2021)
   comorbid = c("WBC", "HTA", "VAN", "COL")
 )
 
@@ -137,8 +182,9 @@ calculate_metrics <- function(data, model_name) {
   N         <- nrow(data)
   predicted <- data$Cc
   observed  <- data$Cc_observed
-  rBias <- (1/N) * sum((predicted - observed) / observed) * 100
-  rRMSE <- sqrt((1/N) * sum(((predicted - observed)^2) / observed^2)) * 100
+  rPE   <- (predicted - observed) / ((predicted + observed) / 2)
+  rBias <- mean(rPE) * 100
+  rRMSE <- sqrt(mean(rPE^2)) * 100
   tibble(model_name = model_name, rBias = rBias, rRMSE = rRMSE,
          weight = data$weight[1])
 }
@@ -505,11 +551,15 @@ server <- function(input, output, session) {
 
   output$model_checkboxes <- renderUI({
     nms <- selected_model_names()
+    # Group-relevant models first, then the rest; each labelled with its
+    # source population so CRRT-only vs mixed vs no-RRT cohorts are explicit.
+    ordered <- c(nms, setdiff(names(meropenem_models), nms))
+    lbls <-  ordered
     checkboxGroupButtons(
       inputId   = "model_selection",
       label     = NULL,
       selected  = nms,
-      choices   = names(meropenem_models),
+      choices   = setNames(ordered, lbls),
       size      = "sm",
       direction = "vertical",
       justified = TRUE,
@@ -542,20 +592,40 @@ server <- function(input, output, session) {
       sections$clinical <- tagList(
         h5("Clinical state"),
         fluidRow(
-          if (needs("sepsis")) column(3, checkboxInput("flag_sepsis", "Sepsis",                   FALSE)),
+          if (needs("sepsis")) column(4, checkboxInput("flag_sepsis",
+                          "Septic (uncheck = polytraumatized)", TRUE)),
           if (needs("shock"))  column(3, checkboxInput("flag_shock",  "Shock / haemodynamic",     FALSE)),
           if (needs("aclf"))   column(3, checkboxInput("flag_aclf",   "Acute-on-chronic LF (ACLF)", FALSE))
         )
       )
     }
 
+    if (needs("clcrurine")) {
+      sections$clcrurine <- tagList(
+        h5("Measured creatinine clearance"),
+        fluidRow(
+          column(5, numericInput("clcr_urine",
+                   "CLCR from 24-h urine (mL/min)", value = 0, min = 0)),
+          column(7, helpText("Isla_2008 was built on measured CLCR = (Ucr x Vu)/(Pcr x t),",
+                             "not a Cockcroft-Gault estimate. Leave at 0 for an anuric patient."))
+        )
+      )
+    }
+
     if (needs("crrt")) {
+      # Pre-tick for the CRRT patient type: the mixed-cohort models (An, Burger,
+      # Kang) switch clearance branch on this flag, and a CRRT patient left
+      # unticked would silently be treated as non-CRRT.
+      on_crrt_type <- isTRUE(input$patient_type == "CRRT / CVVHDF")
       sections$crrt <- tagList(
         h5("CRRT / CVVHDF"),
         fluidRow(
-          column(3, checkboxInput("flag_crrt", "Patient on CRRT", FALSE)),
+          column(3, checkboxInput("flag_crrt", "Patient on CRRT", on_crrt_type)),
           column(3, numericInput("qfd", "Filter flow Qfd (L/h)", 2))
-        )
+        ),
+        if (on_crrt_type)
+          helpText("Pre-ticked because the patient type is CRRT / CVVHDF;",
+                   "untick only if this patient is off the filter.")
       )
     }
 
@@ -612,13 +682,41 @@ server <- function(input, output, session) {
     }
 
     if (needs("dialysis")) {
+      # One modality, not two checkboxes: the model's clearance cascade treats
+      # these as mutually exclusive (DIA_SC silently overrides DIA_C), so the
+      # choice has to be single-valued.
       sections$dialysis <- tagList(
-        h5("Dialysis details"),
+        h5("RRT modality"),
         fluidRow(
-          column(3, checkboxInput("flag_dia_c",    "Continuous dialysis",      FALSE)),
-          column(3, checkboxInput("flag_dia_sc",   "Semi-continuous dialysis", FALSE)),
-          column(3, numericInput("t_dial_start",   "t_Dial at start (h)",      0))
+          column(6, radioButtons("dial_mode", NULL,
+                     choices = c("Semi-continuous / SLED"          = "semi",
+                                 "Continuous (CVVH/CVVHD/CVVHDF)"  = "cont",
+                                 "None"                            = "none"),
+                     selected = "semi")),
+          column(6, helpText("Drives DIA_C / DIA_SC in OJeanson_2021.",
+                             "Typical CL: semi-continuous 11.0 L/h,",
+                             "continuous 5.8 L/h, none 1.3 L/h."))
         )
+      )
+    }
+
+    if (needs("dialsess")) {
+      # t_Dial is TIME-VARYING (hours elapsed within the current session), so it
+      # is derived from the session schedule rather than entered as a constant.
+      sections$dialsess <- tagList(
+        h5("Dialysis session schedule"),
+        fluidRow(
+          column(4, airDatepickerInput("dial_first_start", "First session start",
+                                       value = Sys.time(), timepicker = TRUE,
+                                       timepickerOpts = timepickerOptions(
+                                         hoursStep = 1, minutesStep = 30),
+                                       width = "100%")),
+          column(2, numericInput("dial_dur",      "Length (h)",    8, min = 0)),
+          column(2, numericInput("dial_interval", "Every (h)",    24, min = 1)),
+          column(2, numericInput("dial_n",        "No. sessions",  3, min = 0))
+        ),
+        helpText("t_Dial = hours elapsed since the start of the session in progress,",
+                 "0 between sessions.")
       )
     }
 
@@ -712,16 +810,19 @@ server <- function(input, output, session) {
         VAN     = as.integer(isTRUE(input$flag_van)),
         COL     = as.integer(isTRUE(input$flag_col)),
         RFS     = as.integer(eGFR_MDRD >= 120),
-        DIA_C   = as.integer(isTRUE(input$flag_dia_c)),
-        DIA_SC  = as.integer(isTRUE(input$flag_dia_sc)),
+        # Mutually exclusive by construction — see the dial_mode radio above.
+        DIA_C   = as.integer((input$dial_mode %||% "none") == "cont"),
+        DIA_SC  = as.integer((input$dial_mode %||% "none") == "semi"),
         Qfd     = input$qfd          %||% 0,
+        CLCR_urine = input$clcr_urine %||% 0,   # measured 24-h urinary CLCR
         LPM     = input$lpm          %||% 0,
         TBSA    = input$tbsa         %||% 0,
         CL_CVVH = cl_cvvh_val,
         IL6_CSF = input$il6_csf      %||% 500,
         WBC     = input$wbc          %||% 10,
-        DIUR    = input$diur         %||% 1000,   # single unified input
-        t_Dial  = input$t_dial_start %||% 0
+        DIUR    = input$diur         %||% 1000    # single unified input
+        # t_Dial is NOT set here: it is time-varying and computed per time point
+        # in make_map_data() from the session schedule.
       )
     message(format(Sys.time(), "[%H:%M:%S]"), " patient_data: cov_rows OK — ", nrow(cov_rows), " rows")
 
@@ -733,6 +834,29 @@ server <- function(input, output, session) {
     if (nrow(doses) == 0) return(list(absolute = cov_rows))
 
     first_time <- min(doses$TIME)
+
+    # ── Dialysis session schedule -> t_Dial(t) ────────────────────────────────
+    # Westermann_2021 needs hours elapsed since the START of the session in
+    # progress at each time point, and 0 whenever no session is running.
+    dial_starts <- local({
+      st <- input$dial_first_start
+      n  <- as.integer(input$dial_n %||% 0)
+      iv <- as.numeric(input$dial_interval %||% 24)
+      if (is.null(st) || is.na(n) || n < 1 || !is.finite(iv)) return(numeric(0))
+      as.numeric(difftime(st, first_time, units = "hours")) + (seq_len(n) - 1L) * iv
+    })
+    dial_dur <- as.numeric(input$dial_dur %||% 0)
+
+    t_dial_at <- function(t) {
+      out <- rep(0, length(t))
+      if (!length(dial_starts) || !is.finite(dial_dur) || dial_dur <= 0) return(out)
+      for (s in dial_starts) {
+        elapsed <- t - s
+        on      <- !is.na(elapsed) & elapsed >= 0 & elapsed < dial_dur
+        out[on] <- pmax(out[on], elapsed[on])
+      }
+      out
+    }
 
     to_relative <- function(tbl) {
       tbl %>%
@@ -761,26 +885,38 @@ server <- function(input, output, session) {
         filter(!is.na(TIME)) %>%
         complete(TIME = time_seq) %>%
         arrange(TIME) %>%
-        fill(TBW, WT, IBW, LBM, CLCR_TBW, CLCR_CG, CLCR_CG_IBW,
+        fill(TBW, WT, IBW, LBM, CLCR_TBW, CLCR_CG, CLCR_CG_IBW, CLCR_urine,
              eGFR_CKD_EPI, eGFR_MDRD, CREA_micromol_l,
              ALB, ALBUMIN, CREATININE,
              CRRT, RRT, CVVH, ACLF, SEPSIS, shock, BURN, HTA, VAN, COL,
              RFS, DIA_C, DIA_SC, Qfd, LPM, TBSA, CL_CVVH, IL6_CSF, WBC,
-             DIUR, t_Dial, AGE, .direction = "downup") %>%
+             DIUR, AGE, .direction = "downup") %>%
         mutate(
+          t_Dial = t_dial_at(TIME),
           AMT  = if_else(is.na(AMT),  0, AMT),
           DUR  = if_else(is.na(DUR),  0, DUR),
           EVID = if_else(is.na(EVID), 1, EVID)
         ) %>%
         filter(TIME >= 0) %>%
         # Ensure dose rows sort before observations at the same time, then
-        # compute OCC: increments by 1 at each real dose (EVID=1, AMT>0).
-        # Required by posologyr for models with pi_matrix (IOV) terms.
+        # compute OCC. Required by posologyr for models with pi_matrix (IOV).
+        #
+        # An occasion is a MONITORED dosing interval, not simply a dose: the IOV
+        # variance was estimated per sampled occasion (Ehmann_2019, Table 2 note g:
+        # "Occasion was defined as monitored meropenem infusion, i.e. in total six
+        # occasions"). Opening a new occasion at every dose applies that variance
+        # far more often than estimated, which inflates the simulated / SIR bands.
+        # Intervals with no TDM sample therefore stay in the preceding occasion.
         arrange(TIME, desc(AMT)) %>%
+        mutate(.interval = cumsum(EVID == 1 & AMT > 0)) %>%
+        group_by(.interval) %>%
+        mutate(.sampled = any(EVID == 0 & !is.na(DV))) %>%
+        ungroup() %>%
         mutate(
-          OCC = cumsum(EVID == 1 & AMT > 0),
+          OCC = pmax(cumsum(EVID == 1 & AMT > 0 & .sampled), 1L),
           ID  = 1L          # required by posologyr for IOV (pi_matrix) models
-        )
+        ) %>%
+        select(-.interval, -.sampled)
     }
 
     message(format(Sys.time(), "[%H:%M:%S]"), " patient_data: building pmap_fit...")
@@ -1150,9 +1286,25 @@ server <- function(input, output, session) {
       mutate(TIME = format(TIME, "%d/%m/%Y"))
 
     # ── Dose recommendation ───────────────────────────────────────────────────
+    #
+    # Pipeline, in order:
+    #   cov_vals          most recent covariate row for this patient
+    #   params_per_model  theta + MAP-estimated ETAs + cov_vals, one vector per model
+    #   sim_tmic_ss()     forward-simulate ONE candidate regimen -> %fT>threshold
+    #   dose_search()     smallest dose whose %fT>threshold meets the target
+    #   strategies loop   repeat the search over infusion duration x interval
+    #
+    # The target itself is `target_pct` % of the interval spent above
+    # `threshold` = free_frac * mic_mult * target_mic, all set on the Targets tab.
     msg("Computing dose recommendations...")
 
-    # Most-recent covariate values for forward simulation (exclude bookkeeping cols)
+    # Most-recent covariate values for forward simulation.
+    # tail(1) takes the LAST row of the fitted grid, i.e. the patient's current
+    # state: recommendations are made for the covariates as they are now, not as
+    # they were at the first dose. Bookkeeping columns are dropped because
+    # rxSolve() would otherwise treat them as model parameters; KAPPA_* in
+    # particular must go, so the forward simulation carries no IOV draw (the
+    # recommendation is for a typical future occasion, not a resampled one).
     kappa_drop <- grep("^KAPPA_", names(pmap_fit), value = TRUE)
     cov_vals <- pmap_fit %>%
       tail(1) %>%
@@ -1161,7 +1313,10 @@ server <- function(input, output, session) {
       select(where(is.numeric)) %>%
       unlist(use.names = TRUE)
 
-    # Per-model parameter vectors: theta + IIV ETAs + patient covariates
+    # Per-model parameter vectors: theta + MAP ETAs + patient covariates.
+    # eta_list holds the individual ETAs from the MAP fit, so each model predicts
+    # from ITS OWN individualised parameters. A model whose MAP fit failed has a
+    # NULL eta and is skipped here, which propagates as NULL through dose_search().
     params_per_model <- setNames(
       lapply(names(model_list), function(nm) {
         eta <- eta_list[[nm]]
@@ -1171,8 +1326,28 @@ server <- function(input, output, session) {
       names(model_list)
     )
 
-    # Simulate %fT>MIC starting from the patient's current compartment levels
-    # (Option B: inits = compartment amounts at last_dose_r from MAP simulation)
+    # Simulate %fT>threshold for ONE candidate regimen.
+    #
+    # inits = compartment amounts carried over from the MAP fit at last_dose_r, so
+    # the simulation starts from the drug already in the patient rather than from
+    # an empty body. That makes the first intervals realistic, but it also means
+    # this is NOT a true steady-state calculation despite the "_ss" name: it
+    # simulates 48 h forward and reads the LAST interval, which approximates
+    # steady state only if 48 h covers enough half-lives. In renal failure or on
+    # CRRT (long effective half-life) the last interval may still be accumulating,
+    # so %fT>threshold is then read off a not-yet-converged profile.
+    #
+    # CAVEAT - grid resolution. Sampling is hourly, so %fT>threshold is
+    # mean(Cc > threshold) over exactly `interval_h` points and can only take
+    # multiples of 100/interval_h:
+    #     q8h  ->  8 points -> 12.5 % steps  (0, 12.5, 25, 37.5, 50, ...)
+    #     q12h -> 12 points ->  8.3 % steps
+    #     q24h -> 24 points ->  4.2 % steps
+    # The coarse grid also biases the value DOWNWARD (a 0.5 h infusion at q8h
+    # reads 62.5 % on the hourly grid vs 71.0 % on a 0.01 h grid), which can push
+    # dose_search() one 250 mg step higher than necessary when the true value sits
+    # just below the target. Lower `by =` to tighten this, at a proportional cost
+    # in solver time (dose_search calls this once per candidate dose).
     sim_tmic_ss <- function(ppk_model, params_all, dose_mg, interval_h, dur_h,
                              inits = NULL) {
       n <- as.integer(ceiling(48 / interval_h))  # 2 days regardless of interval
@@ -1192,8 +1367,19 @@ server <- function(input, output, session) {
       mean(last$Cc > threshold, na.rm = TRUE) * 100
     }
 
-    # Find minimum dose (250 mg steps) within daily limit of 6 g/day.
-    # Uses per-model initial conditions from last_dose_r (Option B).
+    # Smallest dose meeting the target, scanned in 250 mg steps.
+    #
+    # Linear ascending scan that returns on the FIRST dose reaching target_pct.
+    # This is only valid because %fT>threshold is monotone increasing in dose,
+    # which holds for these linear (first-order) models - it would NOT hold for a
+    # saturable model. The scan is cheap (<= 8 candidates: max_single is capped so
+    # that dose x doses-per-day stays under daily_limit), so a bisection would buy
+    # little.
+    #
+    # Returns list(dose, max_pct):
+    #   target reached -> dose = first qualifying dose, max_pct = its %fT
+    #   never reached  -> dose = NA, max_pct = best % seen, so the caller can show
+    #                     how far off the ceiling regimen was rather than a bare NA.
     dose_search <- function(nm, interval_h, dur_h, daily_limit = 6000, step = 250) {
       p <- params_per_model[[nm]]
       if (is.null(p)) return(list(dose = NA_real_, max_pct = NA_real_))
@@ -1211,13 +1397,16 @@ server <- function(input, output, session) {
       list(dose = NA_real_, max_pct = round(best_pct, 1))
     }
 
-    # Model weights from metrics_summary (NA for failed models)
+    # Model weights for the averaged recommendation, aligned by name to
+    # model_list order. Models whose fit failed carry NA and are dropped below.
     w_named <- setNames(
       metrics_summary$weight[match(names(model_list), metrics_summary$model_name)],
       names(model_list)
     )
 
-    # Infusion strategies
+    # Infusion strategies: the grid of regimens offered to the clinician.
+    # dur = NA means continuous infusion (duration is set equal to the interval).
+    # Each (strategy, interval) pair gets its own independent dose search.
     strategies <- list(
       list(label = "Intermittent (0.5 h)", dur = 0.5, intervals = c(8, 12, 24)),
       list(label = "Extended 3 h",         dur = 3,   intervals = c(8, 12, 24)),
@@ -1234,7 +1423,14 @@ server <- function(input, output, session) {
         # Best model
         best_rec <- dose_search(best_model, tau, dur_h_rec)
 
-        # Model average: weighted mean of per-model minimum doses
+        # Model-averaged recommendation: weight each model's OWN minimum dose by
+        # its performance weight, then round to the nearest 250 mg.
+        #
+        # NOTE the asymmetry - the averaged DOSE comes from all models, but the
+        # %fT reported next to it (moa_pct) is re-simulated with the BEST model's
+        # parameters only. So that percentage answers "what would the best model
+        # predict for this dose", not "what does the ensemble predict". Averaging
+        # the per-model percentages instead would be the consistent alternative.
         per_m_doses <- sapply(names(model_list), function(nm)
           dose_search(nm, tau, dur_h_rec)$dose)
         valid_m <- !is.na(per_m_doses)

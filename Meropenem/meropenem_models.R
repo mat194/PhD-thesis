@@ -50,9 +50,9 @@ meropenem_models <- list(
       centr(0)  <- 0
       periph(0) <- 0
       
-      CL <- (THETA_CL * ((1 + THETA_CL_CG) * (CLCR_CG - 50))) * exp(ETA_CL)
-      V1 <- (THETA_V1 * ((1 + THETA_V1_ALB) * (ALB - 2.5))) * exp(ETA_V1)
-      V2 <- THETA_V2 + THETA_V2SHOCK * shock
+      CL <- (THETA_CL * (1 + THETA_CL_CG * (CLCR_CG - 50))) * exp(ETA_CL)
+      V1 <- THETA_V1 * (1 + THETA_V1_ALB * (ALB - 2.5))   # IIV on V1 fixed to 0 in the paper
+      V2 <- (THETA_V2 + THETA_V2SHOCK * shock) * exp(ETA_V2)
       Q <- THETA_Q
       
       k10 <- CL / V1
@@ -85,7 +85,7 @@ meropenem_models <- list(
     ),
     covariates = c("CLCR_CG", "ALB", "shock"),
     omega = lotri::lotri({ # provided as CV
-      ETA_CL + ETA_V1 ~
+      ETA_CL + ETA_V2 ~
         c(
           log((60.5 / 100)^2 + 1),
           0, log((47.7 / 100)^2 + 1)
@@ -96,9 +96,13 @@ meropenem_models <- list(
   # https://pubmed.ncbi.nlm.nih.gov/30304491/
   # Mero_3
   Burger_2018 = list(
+    # Mixed cohort (n = 101): 49 CRRT + 52 non-CRRT -- the CRRT flag switches
+    # between the two published clearance branches. Final model is 2-compartment
+    # (Table 4: Q = 14 L/h, Vp = 15 L), allometric BW power +1.7 on Vc.
     ppk_model = rxode2::rxode2({
-      AUC(0)   <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
+      periph(0) <- 0
       
       if (CRRT == 1) {
         Sc <- TV_Sc * exp(ETA_Sc)
@@ -108,12 +112,17 @@ meropenem_models <- list(
       }
       CL <- TV_CL * exp(ETA_CL)
       V1 <- (THETA_V1 * (TBW/72)^THETA_V1_TBW) * exp(ETA_V1)
+      V2 <- THETA_V2
+      Q  <- THETA_Q
       
       k10 <- CL / V1
+      k12 <- Q  / V1
+      k21 <- Q  / V2
       
       Cc <- centr / V1
       
-      d / dt(centr) <- -k10 * centr 
+      d / dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+      d / dt(periph) <-  k12 * centr - k21 * periph
       d / dt(AUC) <- Cc
     }),
     error_model = function(f, sigma) {
@@ -121,12 +130,14 @@ meropenem_models <- list(
       return(g)
     },
     theta = c(
-      TV_Sc              = 0.76,
+      TV_Sc              = 0.75,
       THETA_CL_res       = 3.2, # meropenem residual clearance in CRRT patients
-      THETA_CL           = 0.69,
+      THETA_CL           = 0.71,
       THETA_CL_no_CRRT   = 5.9,
       THETA_V1           = 16,
-      THETA_V1_TBW       = -0.255
+      THETA_V1_TBW       = 1.7, # allometric power on BW/72 (Table 4)
+      THETA_Q            = 14,
+      THETA_V2           = 15
     ),     
     covariates = c("CRRT", "Qfd", "TBW", "CLCR_CG"), # Qfd--> FD flow
     omega = lotri::lotri({ # provided as CV
@@ -147,15 +158,15 @@ meropenem_models <- list(
       centr(0)  <- 0
       periph(0) <- 0
       
-      if (CLCR_CG < 154) {
-        TV_CL <- THETA_CL * (1 + THETA_CL_CG1 * (CLCR_CG - 80.8))
+      if (CLCR_CG <= THETA_CL_INF) {
+        TV_CL <- THETA_CL * (1 + THETA_CL_CG * (CLCR_CG - 80.8))
       } else {
-        TV_CL <- THETA_CL * (1 + THETA_CL_CG2 * (154 - 80.8))
+        TV_CL <- THETA_CL * (1 + THETA_CL_CG * (THETA_CL_INF - 80.8))
       }
       
       CL <- TV_CL * exp(ETA_CL + KAPPA_CL)
       V1 <- (THETA_v1 * (WT/70)^THETA_WT) * exp(ETA_V1)
-      V2 <- (THETA_V2 * (ALB - 2.79)) * exp(ETA_V2)
+      V2 <- (THETA_V2 * (1 + THETA_V2_ALB * (ALB - 2.8))) * exp(ETA_V2)
       Q  <- THETA_Q
       
       k10 <- CL / V1
@@ -174,14 +185,15 @@ meropenem_models <- list(
     },
     theta = c(
       THETA_CL           = 9.25,
-      THETA_CL_CG1       = 0.00977,
-      THETA_CL_CG2       = 154,
+      THETA_CL_CG        = 0.00977,
+      THETA_CL_INF       = 154,      # CLCR_CG inflection point (mL/min)
       THETA_v1           = 7.89,
       THETA_V2           = 16.1,
+      THETA_V2_ALB       = -0.202,
       THETA_WT           = 0.945,
       THETA_Q            = 28.4
     ),     
-    covariates = c( "WT", "CLCR_CG", "ALB"), # Qfd--> FD flow
+    covariates = c( "WT", "CLCR_CG", "ALB"),
     omega = lotri::lotri({ # provided as CV
       ETA_CL + ETA_V1 + ETA_V2 ~
         c(
@@ -193,7 +205,7 @@ meropenem_models <- list(
     pi_matrix = lotri::lotri({ # Provided as CV
       KAPPA_CL ~ log((12.5 / 100)^2 + 1)
     }),
-    sigma = c(additive_a = 2.7, proportional_b = 0.041)
+    sigma = c(additive_a = 0.246, proportional_b = 0.166)
   ),
   # https://pubmed.ncbi.nlm.nih.gov/33515688/
   # Mero_5
@@ -451,11 +463,14 @@ meropenem_models <- list(
       centr(0)  <- 0
       periph(0) <- 0
       
+      # SEPSIS = 1 -> septic (TYPE 1); SEPSIS = 0 -> polytraumatized (TYPE 2).
+      # CLCR_urine is the MEASURED creatinine clearance from a 24-h urine
+      # collection, CLCR = (Ucr * Vu) / (Pcr * t) -- not a Cockcroft-Gault estimate.
       if (SEPSIS == 1) {
-        CL <- (THETA_CL + THETA_CLCR_SEP  * CLCR_CG) * exp(ETA_CL)
+        CL <- (THETA_CL + THETA_CLCR_SEP  * CLCR_urine) * exp(ETA_CL)
         V1 <- THETA_V1_SEP  * exp(ETA_V1)
       } else {
-        CL <- (THETA_CL + THETA_CLCR_POLY * CLCR_CG) * exp(ETA_CL)
+        CL <- (THETA_CL + THETA_CLCR_POLY * CLCR_urine) * exp(ETA_CL)
         V1 <- THETA_V1_POLY * exp(ETA_V1)
       }
       
@@ -488,7 +503,7 @@ meropenem_models <- list(
       THETA_Q         =  15.0#,   
       #THETA_Sc        =  0.72   
     ),
-    covariates = c("CLCR_CG", "SEPSIS"),
+    covariates = c("CLCR_urine", "SEPSIS"),
     omega = lotri::lotri({
       # ETA_Sc
       ETA_CL + ETA_V1 ~
@@ -629,8 +644,9 @@ meropenem_models <- list(
           0, 0, log((36.6 / 100)^2 + 1)
         )
     }),
-    sigma = c(proportional_a = 0.246, power_b = 0.865) # understand if this is correct
-    ),
+    # Table 2: proportional error 24.6%, power parameter 0.865 -> SD = 0.246 * f^0.865
+    sigma = c(proportional_a = 0.246, power_b = 0.865)
+  ),
   # https://pubmed.ncbi.nlm.nih.gov/34790131/
   # Mero_14
   Ha_Lee_2021 = list(
@@ -813,7 +829,7 @@ meropenem_models <- list(
       centr(0)  <- 0
       periph(0) <- 0
       
-      V1 <- THETA_V1 * (ALB / 24.6)^THETA_BETA_V1 * exp(ETA_V1)
+      V1 <- THETA_V1 * (ALB / 2.46)^THETA_BETA_V1 * exp(ETA_V1)  # 24.6 g/L = 2.46 g/dL (app unit)
       V2 <- THETA_V2 * exp(ETA_V2)
       CL <- THETA_CLCRRT * exp(ETA_CL)
       Q  <- THETA_Q   
@@ -1066,6 +1082,8 @@ meropenem_models <- list(
   ),
   # https://pubmed.ncbi.nlm.nih.gov/26124172/
   # Mero_23
+  # CRRT-ONLY cohort: 30 septic-shock patients, ALL on CRRT (CVVHF/CVVHDF).
+  # CRRT intensity was tested and NOT retained; residual diuresis drives CL.
   Ulldemolins_2015 = list(
     ppk_model = rxode2::rxode2({
       AUC(0)   <- 0
@@ -1101,10 +1119,15 @@ meropenem_models <- list(
           0, log((45 / 100)^2 + 1)
         )
     }),
-    sigma = c(additive_a = 0.0002, proportional_b = -0.258)
+    # Table 3 reports the proportional term as -0.258; in NONMEM only sigma^2
+    # matters, but in this additive-SD error model the SD must be positive.
+    sigma = c(additive_a = 0.0002, proportional_b = 0.258)
   ),
   # https://pubmed.ncbi.nlm.nih.gov/33818823/
   # Mero_24
+  # SLED / CVVHD cohort, dosed by CONTINUOUS INFUSION -- V was not identifiable
+  # under CI steady state, hence THETA_V fixed with no IIV. Predictions for
+  # intermittent bolus dosing (peaks especially) extrapolate beyond the design.
   # t_Dial must be provided as a TIME-VARYING covariate in the posologyr
   # patient data (one row per sampling/covariate-change time point):
   #   - RRT patients:     t_Dial = hours elapsed since dialysis session began
@@ -1206,6 +1229,9 @@ meropenem_models <- list(
   ),
   # https://pmc.ncbi.nlm.nih.gov/articles/PMC11278387/
   # Mero_26
+  # CAUTION: faithful to the publication, but the published V = 2.05 L is not
+  # physiological for meropenem (Vss ~ 15-25 L). It predicts Cmax > 130 mg/L and
+  # near-zero troughs. Kept for completeness; excluded from default selection.
   Rancic_2024 = list(
     ppk_model = rxode2::rxode2({
       AUC(0)   <- 0
@@ -1248,7 +1274,7 @@ meropenem_models <- list(
     omega = lotri::lotri({ # IIV on CL only; omega² = 0.0215 
       ETA_CL ~ 0.0215
     }),
-    sigma = c(additive_a = 0, proportional_b = 0.44) # to check the proportional
+    sigma = c(additive_a = 0, proportional_b = 0.44) 
   ),
   # https://pubmed.ncbi.nlm.nih.gov/39455501/
   # Mero_27
@@ -1313,5 +1339,117 @@ meropenem_models <- list(
         )
     }),
     sigma = c(additive_a = 0, proportional_b = 0.37)
+  ),
+  # https://pubmed.ncbi.nlm.nih.gov/27530916/
+  # Mero_28
+  Chung_2017 = list(
+    # Hospitalised nonobese / obese / morbidly obese patients (n = 40, 62% ICU),
+    # TBW 57-305 kg, BMI 19.2-88.8 kg/m2, CRCL 15-186 mL/min. Final model is
+    # 2-compartment with zero-order input and first-order linear elimination.
+    # No body-size descriptor was retained: TBW and LBW were both dropped in the
+    # backward elimination step, so CRCL is the only covariate (on CL).
+    ppk_model = rxode2::rxode2({
+      AUC(0)    <- 0
+      centr(0)  <- 0
+      periph(0) <- 0
+
+      CL <- (THETA_CL + THETA_CL_CRCL * (CLCR_CG - 85)) * exp(ETA_CL)
+      V1 <- THETA_V1 * exp(ETA_V1)
+      V2 <- THETA_V2 * exp(ETA_V2)
+      Q  <- THETA_Q  * exp(ETA_Q)
+
+      k10 <- CL / V1
+      k12 <- Q / V1
+      k21 <- Q / V2
+
+      Cc <- centr / V1
+
+      d / dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+      d / dt(periph) <- k12 * centr - k21 * periph
+      d / dt(AUC)    <- Cc
+    }),
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_CL      = 9.13,     # CL (L/h) at CRCL = 85 mL/min
+      THETA_CL_CRCL = 0.0741,   # linear CRCL effect on CL (L/h per mL/min)
+      THETA_V1      = 14.3,     # L
+      THETA_V2      = 17.7,     # L
+      THETA_Q       = 15.9      # L/h
+    ),
+    # CRCL by modified Cockcroft-Gault on actual serum creatinine; the paper used
+    # TBW for nonobese/obese and LBW for morbidly obese patients. The app supplies
+    # the TBW-based CG estimate (CLCR_CG), so CL is over-predicted in the morbidly
+    # obese unless the CRCL fed in is recomputed on LBW.
+    covariates = c("CLCR_CG"),
+    omega = lotri::lotri({
+      # Table 2 reports IIV as CV% -> variance = log(CV^2 + 1), and rho_i-j as
+      # correlation coefficients -> cov(i,j) = rho * omega_i * omega_j.
+      # No correlation was reported for Q, so its off-diagonals stay 0.
+      ETA_CL + ETA_V1 + ETA_V2 + ETA_Q ~
+        c(
+          log((35.5 / 100)^2 + 1),
+          0.226 * sqrt(log((35.5 / 100)^2 + 1) * log((52.0 / 100)^2 + 1)),
+            log((52.0 / 100)^2 + 1),
+          0.563 * sqrt(log((35.5 / 100)^2 + 1) * log((50.0 / 100)^2 + 1)),
+            0.828 * sqrt(log((52.0 / 100)^2 + 1) * log((50.0 / 100)^2 + 1)),
+            log((50.0 / 100)^2 + 1),
+          0, 0, 0, log((72.9 / 100)^2 + 1)
+        )
+    }),
+    sigma = c(additive_a = 0.992, proportional_b = 0.127)
+  ),
+  # https://pubmed.ncbi.nlm.nih.gov/35093397/
+  # Mero_29
+  Lan_2022 = list(
+    # Critically ill ICU patients with pulmonary infection (n = 48, 238 samples),
+    # median eGFR 35.7 mL/min/1.73 m2, 33% on CRRT and 12.5% on ECMO -- neither
+    # CRRT nor ECMO was a significant covariate, so no switch is exposed here.
+    # Final model is 2-compartment, CL linear in CKD-EPI eGFR centred on 47.
+    ppk_model = rxode2::rxode2({
+      AUC(0)    <- 0
+      centr(0)  <- 0
+      periph(0) <- 0
+
+      CL <- THETA_CL * (1 + THETA_CL_eGFR * (eGFR_CKD_EPI - 47)) * exp(ETA_CL)
+      V1 <- THETA_V1                       # BSV on V1 not estimated (reported as "-")
+      V2 <- THETA_V2 * exp(ETA_V2)
+      Q  <- THETA_Q                        # BSV on Q not estimated (reported as "-")
+
+      k10 <- CL / V1
+      k12 <- Q / V1
+      k21 <- Q / V2
+
+      Cc <- centr / V1
+
+      d / dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
+      d / dt(periph) <- k12 * centr - k21 * periph
+      d / dt(AUC)    <- Cc
+    }),
+    error_model = function(f, sigma) {
+      g <- sigma[1] + sigma[2] * f
+      return(g)
+    },
+    theta = c(
+      THETA_CL      = 7.48,     
+      THETA_CL_eGFR = 0.0103,   
+      THETA_V1      = 15.9,     
+      THETA_V2      = 14.8,     
+      THETA_Q       = 15.8      
+    ),
+    covariates = c("eGFR_CKD_EPI"),
+    omega = lotri::lotri({
+      # Table 2 reports BSV as omega (SD) x100, not CV%: the model note gives
+      # V2 = 14.8 * exp(eta) with eta variance 2.46, and 1.57^2 = 2.46 matches
+      # the tabulated omega_V2 = 157%. Same scale applied to omega_CL = 49.6%.
+      ETA_CL + ETA_V2 ~
+        c(
+          0.496^2,
+          0, 1.57^2
+        )
+    }),
+    sigma = c(additive_a = 0.407, proportional_b = 0.322)
   )
 )
