@@ -5,9 +5,9 @@ account: 1k96vt-matteo-morra
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 16691201
-bundleId: 12103080
+bundleId: 12399415
 url: https://1k96vt-matteo-morra.shinyapps.io/Dalbavancin/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .claude/settings.local.json|Dalbavancin_shiny.R|debug_p_weights.R|Models
+ignoredFiles: .claude/settings.local.json|Dalbavancin_shiny.R|debug_p_weights.R|report_template.Rmd|Supplementary_material_models.docx|Models

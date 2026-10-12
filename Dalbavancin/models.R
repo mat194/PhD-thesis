@@ -1,8 +1,8 @@
 Dalbavancin <- list(
   Gregoire2025 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
       TVV1 <- THETA_V1 * (ABW / 66.5) ^ 0.6
       TVCL <- THETA_CL * (AGFR / 88.5) ^ 0.21
@@ -14,9 +14,9 @@ Dalbavancin <- list(
       k12 <- Q / V1
       k21 <- Q / V2
       Cc <- centr / V1
-      d / dt(centr) <- -k10 * centr - k12 * centr + k21 * periph
+      d / dt(centr)  <- -k10 * centr - k12 * centr + k21 * periph
       d / dt(periph) <- k12 * centr - k21 * periph
-      d / dt(AUC) <- Cc
+      d / dt(AUC)    <- Cc
     }),
     error_model = function(f, sigma) {
       g <- sigma[1] + sigma[2] * f
@@ -39,8 +39,8 @@ Dalbavancin <- list(
 
   Cojutti2022 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
       TVCL <- THETA_CL * (eGFR / 93)^0.0043
       V1   <- THETA_V1 * exp(ETA_V1)
@@ -78,8 +78,8 @@ Dalbavancin <- list(
 
   Carrothers2020 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
-      centr(0) <- 0
+      AUC(0)     <- 0
+      centr(0)   <- 0
       periph1(0) <- 0
       periph2(0) <- 0
 
@@ -148,8 +148,8 @@ Dalbavancin <- list(
 
   Cojutti2021 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
 
       CL <- THETA_CL * exp(ETA_CL)
@@ -261,9 +261,9 @@ Dalbavancin <- list(
 
   Baiardi2025 = list(
     ppk_model = rxode2::rxode2({
-      centr(0) <- 0
+      centr(0)  <- 0
       periph(0) <- 0
-      AUC(0) <- 0
+      AUC(0)    <- 0
 
       CL <- THETA_CL * (WT / 70)^0.75 * exp(ETA_CL)
       V1 <- THETA_V1 * (WT / 70) * exp(ETA_V1)
@@ -305,7 +305,7 @@ Dalbavancin <- list(
 
   Benavent2025 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
+      AUC(0)   <- 0
       centr(0) <- 0
       V1 <- THETA_V1 * exp(ETA_V1)
       CL <- THETA_CL * exp(ETA_CL)
@@ -336,8 +336,8 @@ Dalbavancin <- list(
 
   Pai2026 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0)   <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
 
       # CL modelled on log-transformed BMI/25 and absolute eGFR/75 (CKD-EPI × BSA_Mosteller / 1.73)
@@ -380,8 +380,8 @@ Dalbavancin <- list(
 
   Chiriac2024 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0) <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
       V1   <- THETA_V1 * exp(ETA_V1)
       V2   <- THETA_V2 * exp(ETA_V2)
@@ -415,8 +415,8 @@ Dalbavancin <- list(
   ),
   Sayadi2026 = list(
     ppk_model = rxode2::rxode2({
-      AUC(0)   <- 0
-      centr(0) <- 0
+      AUC(0)    <- 0
+      centr(0)  <- 0
       periph(0) <- 0
       # Covariates centred on population medians: eGFR 75 mL/min/1.73m², WT 79 kg
       # WT exponents on V1 and V2 fixed to 1.0 (standard allometric scaling)
