@@ -1,0 +1,13 @@
+name: fludarabine
+title: Fludarabine
+username: mat194
+account: mat194
+server: connect.posit.cloud
+hostUrl: https://api.connect.posit.cloud/v1
+appId: 01a13499-f1f3-4c6a-33a3-f15c476f5835
+bundleId:
+url: https://connect.posit.cloud/mat194/content/01a13499-f1f3-4c6a-33a3-f15c476f5835
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: fludarabine_model.pdf
