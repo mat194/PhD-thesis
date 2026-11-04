@@ -54,6 +54,14 @@ patient_A <- data.frame(
       serum_creatinine_mg_dl = creatinine_mg_dl,
       gender = gender
     ),
+    # Cockcroft-Gault for a nominal 70 kg subject, used by Delattre_2012:
+    # weight is already carried by the allometric term in that model.
+    CLCR_70 = calculate_crcl(
+      age = AGE,
+      weight_kg = 70,
+      serum_creatinine_mg_dl = creatinine_mg_dl,
+      gender = gender
+    ),
     eGFR_CKD_EPI_CYSTATIN = calculate_egfr_cystatin_c(
       age = AGE,
       serum_creatinine_mg_dl = creatinine_mg_dl,

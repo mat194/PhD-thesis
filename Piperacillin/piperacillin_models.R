@@ -10,7 +10,7 @@ piperacillin_models <- list(
       centr(0) <- 0
       periph(0) <- 0
 
-      CL <- (THETA_CL + (CLCR_CG / 1.95)^THETA_CL_2 + THETA_CLEC * RRT) * exp(ETA_CL)
+      CL <- (THETA_CL + (CLCR_CG / 1.95)*THETA_CL_2 + THETA_CLEC * RRT) * exp(ETA_CL)
       V1 <- THETA_V1 * exp(ETA_V1)
       V2 <- THETA_V2^(WT / 75.3)   
       Q  <- THETA_Q
@@ -820,15 +820,34 @@ piperacillin_models <- list(
   # https://pubmed.ncbi.nlm.nih.gov/22503878/
   # Pipe_19
   Delattre_2012 = list(
+    # 88 critically ill patients with severe sepsis or septic shock in four
+    # Belgian ICUs, co-medicated with an amikacin loading dose (25 mg/kg); the
+    # piperacillin subset is n = 22 (Table 1). Piperacillin 4 g every 6 h as a
+    # 30 min infusion; FIRST-DOSE pharmacokinetics, so this model describes the
+    # acute phase, not steady state.
+    # Final model 1 (Table 1): 2-compartment with first-order elimination.
+    # All disposition parameters are allometrically scaled to a 70 kg adult
+    # (Equation 5), exponent fixed at 1 for volumes and 0.75 for clearances.
+    # Renal function enters as a power function (Equations 6-8):
+    #   CL = THETA_CL * (WT/70)^0.75 * (CLCR_70 / 100)^THETA_CL_RF
+    # CLCR_70 is Cockcroft-Gault computed for a NOMINAL 70 kg subject:
+    #   CLCR_70 = (140 - AGE) * 70 / (SCr * 72), x 0.85 if female, SCr in mg/dL.
+    # The standard weight is used deliberately so that body weight is not
+    # counted twice (it is already in the allometric term); do NOT substitute
+    # an ordinary weight-based Cockcroft-Gault. Reference CLCR is 100 mL/min.
+    # The data did not support IIV on V2 or Q for piperacillin ("-" in Table 1).
+    # NOTE: models 2 and 3 in the paper add amikacin PK parameters or measured
+    # amikacin concentrations as covariates; they need amikacin TDM data, so
+    # only model 1 is implemented here. Same paper as Ceftaz_5 and Cefep_9.
     ppk_model = rxode2::rxode2({
       AUC(0)    <- 0
       centr(0)  <- 0
       periph(0) <- 0
 
-      CL <- (THETA_CL * (CLCR_CG/100)^THETA_CL_2) * exp(ETA_CL)
-      V1 <- THETA_V1 * exp(ETA_V1)
-      V2 <- THETA_V2
-      Q <- THETA_Q
+      CL <- THETA_CL * (WT / 70)^0.75 * (CLCR_70 / 100)^THETA_CL_RF * exp(ETA_CL)
+      V1 <- THETA_V1 * (WT / 70) * exp(ETA_V1)
+      V2 <- THETA_V2 * (WT / 70)
+      Q  <- THETA_Q  * (WT / 70)^0.75
 
       k10 <- CL / V1
       k12 <- Q / V1
@@ -845,13 +864,13 @@ piperacillin_models <- list(
       return(g)
     },
     theta = c(
-      THETA_CL   = 0.97,
-      THETA_CL_2 = 0.62,
-      THETA_V1   = 24,
-      THETA_V2   = 8.11,
-      THETA_Q    = 5.48
+      THETA_CL    = 9.97,   # CL (L/h) for 70 kg at CLCR = 100 mL/min
+      THETA_CL_RF = 0.62,   # theta_CL-RF, exponent of the renal function effect
+      THETA_V1    = 24.0,   # central volume (L) for 70 kg
+      THETA_V2    = 8.11,   # peripheral volume (L) for 70 kg
+      THETA_Q     = 5.48    # inter-compartmental clearance (L/h) for 70 kg
     ),
-    covariates = c("CLCR_CG"),
+    covariates = c("CLCR_70", "WT"),
     omega = lotri::lotri({ # Provided as CV
       ETA_CL + ETA_V1  ~
         c(
