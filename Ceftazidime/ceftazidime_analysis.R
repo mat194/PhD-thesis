@@ -1,4 +1,5 @@
 library(tidyverse);library(readxl);library(data.table);library(ggrepel)
+library(npde);library(vpc)
 
 source("~/PhD-thesis/Utils/Functions.R")
 source("~/PhD-thesis/Utils/med.R")
@@ -425,8 +426,146 @@ for (i in sort(unique(combined_results_tot$ID))) {
     facet_wrap(~ model, scales = "free") 
   
   ggsave(paste0("Ceftazidime/Concentration/POP/",i,".png"))
-  
+
 }
+
+# NPDE and VPC evaluation (population, a priori model) --------------------
+# Uses the published npde (Comets et al. 2008, autonpde()) and vpc (Keizer,
+# vpc()) packages rather than a custom implementation. Both need the FULL
+# predictive distribution Y = f + residual error, simulated per patient with
+# med_simulate_patient() (Utils/med.R, sourced above) -- the same routine the
+# MED section below uses -- and NOT the IIV-only Cc_p05/Cc_p95 percentiles
+# computed above for the concentration-time ribbons, which carry no residual
+# error and are therefore not a valid NPDE/VPC predictive distribution.
+npde_vpc_n_sim <- pop_n_simul   # replicates per patient; same budget as the simulation above
+
+npde_results <- list()
+vpc_plots    <- list()
+
+for (model_name in names(models_ceftazidime)) {
+  message("NPDE/VPC: simulating model ", model_name)
+  model <- models_ceftazidime[[model_name]]
+
+  obs_rows <- list()
+  sim_rows <- list()
+
+  for (i in sort(unique(population_df$ID))) {
+    dat_i <- population_df |> filter(ID == i)
+
+    sim_i <- tryCatch(
+      med_simulate_patient(dat_i, model, K = npde_vpc_n_sim, nonneg = "truncate"),
+      error = function(e) {
+        message("  ID ", i, " failed: ", conditionMessage(e))
+        NULL
+      }
+    )
+    if (is.null(sim_i)) next
+
+    times_i <- attr(sim_i, "times")
+    obs_rows[[as.character(i)]] <- tibble(ID = i, TIME = times_i, DV = attr(sim_i, "y_obs"))
+    sim_rows[[as.character(i)]] <- tibble(
+      ID   = i,
+      irep = rep(seq_len(nrow(sim_i)), times = ncol(sim_i)),
+      TIME = rep(times_i, each = nrow(sim_i)),
+      DV   = as.vector(sim_i)
+    )
+  }
+
+  namobs <- bind_rows(obs_rows) |> arrange(ID, TIME)
+  namsim <- bind_rows(sim_rows)
+
+  if (nrow(namobs) == 0) {
+    message("  no usable patients for ", model_name, ", skipping NPDE/VPC")
+    next
+  }
+
+  # namsim must stack npde_vpc_n_sim blocks, each in namobs's exact (ID, TIME)
+  # row order (see ?autonpde: "the program will assume subject ID are in
+  # column 1 and simulated Y in column 3" -- the number of replicates is
+  # inferred from nrow(namsim) / nrow(namobs), no explicit replicate column).
+  namsim_npde <- namsim |>
+    arrange(irep, ID, TIME) |>
+    select(ID, TIME, DV)
+
+  npde_results[[model_name]] <- tryCatch(
+    npde::autonpde(
+      namobs = as.data.frame(namobs),
+      namsim = as.data.frame(namsim_npde),
+      iid = "ID", ix = "TIME", iy = "DV",
+      boolsave = FALSE, verbose = FALSE
+    ),
+    error = function(e) {
+      message("  NPDE failed for ", model_name, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+
+  vpc_plots[[model_name]] <- tryCatch(
+    vpc::vpc(
+      sim = namsim |> rename(id = ID, time = TIME, dv = DV, sim = irep) |> as.data.frame(),
+      obs = namobs |> rename(id = ID, time = TIME, dv = DV) |> as.data.frame(),
+      obs_cols = list(id = "id", idv = "time", dv = "dv"),
+      sim_cols = list(id = "id", idv = "time", dv = "dv", sim = "sim"),
+      show  = list(obs_dv = TRUE),
+      title = model_name
+    ),
+    error = function(e) {
+      message("  VPC failed for ", model_name, ": ", conditionMessage(e))
+      NULL
+    }
+  )
+}
+
+# One row per model, the statistics autonpde's own gof.test() reports: mean
+# and variance of npde (target N(0,1) under a correct model), and the
+# adjusted p-values for the t-test (mean), Fisher variance test, Shapiro-Wilk
+# normality test, and the global test (the min of the three, Bonferroni-
+# adjusted). A significant global test rejects the model on this cohort.
+npde_summary <- bind_rows(lapply(names(npde_results), function(model_name) {
+  fit <- npde_results[[model_name]]
+  if (is.null(fit)) return(NULL)
+  g <- npde::gof.test(fit)
+  # gof.test() names its p-values with padding spaces baked in (e.g.
+  # "  t-test               ") for its own print formatting, so match on the
+  # trimmed names rather than exact string lookup.
+  pv <- g$p.value
+  names(pv) <- trimws(names(pv))
+  tibble(
+    Model          = model_name,
+    n_obs          = g$nobs,
+    mean_npde      = g$mean,
+    var_npde       = g$var,
+    p_ttest        = unname(pv["t-test"]),
+    p_fisher_var   = unname(pv["Fisher variance test"]),
+    p_sw_normality = unname(pv["SW test of normality"]),
+    p_global       = unname(pv["Global test"])
+  )
+})) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4)))
+
+print(npde_summary, n = Inf)
+
+npde_dir <- "Ceftazidime/NPDE"
+dir.create(npde_dir, recursive = TRUE, showWarnings = FALSE)
+
+for (model_name in names(npde_results)) {
+  fit <- npde_results[[model_name]]
+  if (is.null(fit)) next
+  png(file.path(npde_dir, paste0(model_name, ".png")), width = 1000, height = 900, res = 130)
+  plot(fit, main = model_name)
+  dev.off()
+}
+
+vpc_dir <- "Ceftazidime/VPC"
+dir.create(vpc_dir, recursive = TRUE, showWarnings = FALSE)
+
+for (model_name in names(vpc_plots)) {
+  p <- vpc_plots[[model_name]]
+  if (is.null(p)) next
+  ggsave(file.path(vpc_dir, paste0(model_name, ".png")), p,
+         width = 8, height = 6, dpi = 150, bg = "white")
+}
+
 
 # MAP estimation ----------------------------------------------------------
 map_data <- df_tdm1   ; map_label <- "1st TDM only"
