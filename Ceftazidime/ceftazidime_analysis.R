@@ -452,8 +452,12 @@ for (model_name in names(models_ceftazidime)) {
   for (i in sort(unique(population_df$ID))) {
     dat_i <- population_df |> filter(ID == i)
 
+    # nonneg = "none": unlike MED (which ranks profiles in log-concentration
+    # space and needs positivity, see Utils/med.R), NPDE/VPC analyze the raw
+    # Y = f + residual-error distribution directly. Truncating it here would
+    # evaluate a quietly modified error model instead of the published one.
     sim_i <- tryCatch(
-      med_simulate_patient(dat_i, model, K = npde_vpc_n_sim, nonneg = "truncate"),
+      med_simulate_patient(dat_i, model, K = npde_vpc_n_sim, nonneg = "none"),
       error = function(e) {
         message("  ID ", i, " failed: ", conditionMessage(e))
         NULL
