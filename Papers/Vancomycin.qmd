@@ -1,0 +1,74 @@
+---
+title: "Vancomycin"
+
+author:
+  - name: Matteo Morra
+    corresponding: true
+    orcid: 0000-0002-1684-0261
+    email: matteo.morra@univr.it
+    affiliation:
+      - ref: verona
+      
+  - name: Evelina Tacconelli
+    orcid: 0000-0003-2010-4977
+    affiliation:
+      - ref: verona
+      
+affiliations:
+  - id: verona
+    name: "Division of Infectious Diseases, Department of Diagnostics and Public Health, University of Verona, Verona, Italy"
+  
+bibliography: Utils/bibliography.bib
+csl: Utils/elsevier-vancouver.csl
+
+lang: en
+
+filters:
+  - authors-block
+  - landscape
+    
+format:
+  wordcount-docx:
+    reference-doc: Utils/custom-reference-doc.docx
+  pdf:
+    keep-tex: true
+---
+
+## Introduction
+
+Population pharmacokinetic (popPK) models are increasingly implemented in model-informed precision dosing (MIPD) software to individualize vancomycin therapy in real time [@wicha2021tdm]. Before such models can be trusted for bedside dosing decisions, however, their predictive performance must be established through external validation, classically distinguished into two complementary scenarios. *A priori* validation evaluates how well a model predicts drug exposure using only patient characteristics (e.g., body weight, renal function) and the dosing history, before any measured concentration is available, reflecting the scenario of selecting an optimal starting dose. *A posteriori* validation, in contrast, assesses model performance after one or more therapeutic drug monitoring (TDM) concentrations have been incorporated via Bayesian (maximum a posteriori) estimation, reflecting the scenario of adjusting subsequent doses once individual data become available [@wicha2021tdm].
+
+Because a model that performs well in one setting need not generalize to another population, systematic external evaluation across both scenarios is essential before clinical implementation. Broeker et al. encoded 31 published vancomycin popPK models in NONMEM and evaluated their a priori and Bayesian a posteriori forecasting performance in 292 hospitalized patients, finding substantial variability in predictive accuracy and identifying the model by Goti et al. as the most suitable for precision dosing [@broeker2019vanco]. Similarly, Heus et al. evaluated 23 vancomycin models for continuous infusion regimens across three Belgian hospitals, confirming that predictive performance again differed markedly between the a priori and a posteriori scenarios and that model averaging could offer a robust alternative to selecting a single best model [@heus2022vanco]. These studies underscore the need to characterize both validation scenarios explicitly when appraising candidate vancomycin models for clinical use.
+
+## Methods
+
+### Study design, setting and patients
+
+This was a retrospective, two-center external validation study of published vancomycin popPK models. Adult patients hospitalized with culture-confirmed bloodstream infections and treated with intravenous vancomycin were included from two Italian tertiary-care centers: the University Hospital of Verona and the University Hospital of Udine. For each patient, demographic and clinical covariates (age, sex, total body weight, height, serum creatinine, dialysis/continuous renal replacement therapy \[CRRT\] status, loading-dose administration) were collected together with the complete vancomycin dosing history (dose amount, infusion duration, dosing interval and number of administered doses) and all available TDM concentrations with their sampling times.
+
+Data from the two centers were cleaned and harmonized into a common NONMEM-style longitudinal dataset.
+
+### Candidate population pharmacokinetic models
+
+Eight previously published, externally validated adult vancomycin popPK models were identified from the literature and reproduced in R. For each model, the original structural model (one- or two-compartment, first-order elimination), typical parameter values, covariate effects, between-subject variability (full omega variance-covariance matrix) and combined additive-proportional residual error model were reproduced as reported in the corresponding publication. Structural models were encoded as ordinary-differential-equation systems with the `rxode2` package.
+
+### A priori and a posteriori predictive performance
+
+For every model and patient, two complementary prediction scenarios were generated using the `posologyr` package, following the approach previously used to externally validate vancomycin popPK models for Bayesian forecasting [@broeker2019vanco]:
+
+- **A priori (population) prediction**: concentration-time and cumulative AUC profiles were simulated from each patient's actual dosing history and covariates together with the published population (fixed-effect) parameters only, without incorporating any of that patient's own observed concentrations.
+- **A posteriori (MAP) prediction**: individual Bayesian MAP parameter estimates were obtained for each patient. The resulting empirical Bayes estimates were used to generate individualized concentration-time and AUC forecasts, reflecting the scenario used to guide subsequent dose adjustment once at least one concentration measurement is available.
+
+### Assessment of predictive performance
+
+For each model and prediction scenario, predicted concentrations were compared with observed TDM concentrations using relative bias (rBias) and relative root mean squared error (rRMSE), as provided:
+
+$$rBias\ (\%) = \frac{1}{N}\sum \frac{predicted-observed}{(predicted+observed)/2} \times 100$$
+
+$$rRMSE\ (\%) = \sqrt{\frac{1}{N}\sum \left(\frac{predicted-observed}{(predicted+observed)/2}\right)^2} \times 100$$
+
+Median percentage error (MPE) and median absolute percentage error (MAPE) were computed as secondary accuracy and precision metrics. Ninety-five percent confidence intervals for all four metrics were obtained by non-parametric bootstrap resampling of the observation-level dataset (1,000 replicates). A model's predictive performance was considered acceptable when the 95% CI of rBias included zero and remained within a predefined ±30% safe zone, with rRMSE as low as possible.
+
+Model-predicted AUC~0-24~ over the first steady-state 24-hour interval following treatment initiation (encompassing the time of first TDM sampling) was derived for both scenarios as the increment in cumulative AUC between consecutive 24-hour time points, summarized as medians with interquartile ranges, and compared descriptively against the consensus AUC/MIC PK/PD target of 400-600 mg·h/L.
+
+All analyses were performed in R using the `posologyr` and`rxode2` packages.

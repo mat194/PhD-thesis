@@ -51,7 +51,7 @@ meropenem_models <- list(
       periph(0) <- 0
       
       CL <- (THETA_CL * (1 + THETA_CL_CG * (CLCR_CG - 50))) * exp(ETA_CL)
-      V1 <- THETA_V1 * (1 + THETA_V1_ALB * (ALB - 2.5))   # IIV on V1 fixed to 0 in the paper
+      V1 <- THETA_V1 * (1 + THETA_V1_ALB * (ALB - 2.5))   
       V2 <- (THETA_V2 + THETA_V2SHOCK * shock) * exp(ETA_V2)
       Q <- THETA_Q
       
@@ -409,6 +409,7 @@ meropenem_models <- list(
     }),
     sigma = c(additive_a = 0, proportional_b = 0.220) 
   ),
+  # To be checked
   # https://pubmed.ncbi.nlm.nih.gov/29530848/
   # Mero_9
   Hanberg_2018 = list(
@@ -1414,9 +1415,9 @@ meropenem_models <- list(
       periph(0) <- 0
 
       CL <- THETA_CL * (1 + THETA_CL_eGFR * (eGFR_CKD_EPI - 47)) * exp(ETA_CL)
-      V1 <- THETA_V1                       # BSV on V1 not estimated (reported as "-")
+      V1 <- THETA_V1                       
       V2 <- THETA_V2 * exp(ETA_V2)
-      Q  <- THETA_Q                        # BSV on Q not estimated (reported as "-")
+      Q  <- THETA_Q                       
 
       k10 <- CL / V1
       k12 <- Q / V1

@@ -1348,6 +1348,56 @@ m_out_tot <- bind_rows(m_out)
 scoring_rows <- bind_rows(m_score) %>%
   select(dataset, model_name, ID, TIME, n_seen, used_in_fit, observed, predicted)
 
+# Model averaging ---------------------------------------------------------
+# Weights are w_m proportional to exp(-0.5 * OFV_m) (likelihood weights; the
+# AIC variant penalises by the number of random effects, the SSE variant uses
+# the fit error instead). Two things have to happen and neither did before:
+#
+#   1. NORMALISE. sum(Cc * w) without dividing by sum(w) is a weighted SUM, not
+#      an average, so the result had no meaningful scale.
+#   2. SHIFT BEFORE EXPONENTIATING. exp(-0.5 * OFV) with OFV in the hundreds is
+#      denormal, and exactly 0 once OFV passes ~1420, so every weight collapsed
+#      to 0 and MA_* came out 0. Subtracting the maximum log-weight first is
+#      algebraically identical after normalisation (the constant cancels) and
+#      keeps the largest weight at exp(0) = 1.
+ma_weights <- function(log_w) {
+  z <- log_w - max(log_w, na.rm = TRUE)
+  w <- exp(z)
+  w / sum(w, na.rm = TRUE)
+}
+
+# One ofv / SSE per fit, so the weights are per (patient, model) and constant
+# over time. Models that failed for a patient are simply absent, and the
+# weights renormalise over the ones that are left.
+ma_fit_weights <- m_out_tot |>
+  distinct(ID, model_name, ll_exp, aic_exp, sse_exp) |>
+  group_by(ID) |>
+  mutate(
+    w_LL  = ma_weights(ll_exp),
+    w_AIC = ma_weights(aic_exp),
+    w_SSE = ma_weights(sse_exp)
+  ) |>
+  ungroup() |>
+  select(ID, model_name, w_LL, w_AIC, w_SSE)
+
+# Averaged prediction at each scored observation: the weighted mean of the
+# single-model predictions there. Dividing by sum(w) renormalises when a model
+# has no prediction at that time (observation outside its grid).
+ma_scoring_rows <- scoring_rows |>
+  filter(is.finite(predicted)) |>
+  inner_join(ma_fit_weights, by = c("ID", "model_name")) |>
+  group_by(dataset, ID, TIME, n_seen, used_in_fit, observed) |>
+  summarise(
+    MA_LL  = sum(predicted * w_LL)  / sum(w_LL),
+    MA_AIC = sum(predicted * w_AIC) / sum(w_AIC),
+    MA_SSE = sum(predicted * w_SSE) / sum(w_SSE),
+    .groups = "drop"
+  ) |>
+  pivot_longer(starts_with("MA_"), names_to = "model_name", values_to = "predicted")
+
+# Scored exactly like any other model from here on.
+scoring_rows <- bind_rows(scoring_rows, ma_scoring_rows)
+
 #scoring_rows %>% count(dataset, model_name, name = "n_scored") %>% print(n = Inf)
 metrics_scope <- if (any(!scoring_rows$used_in_fit)) "out-of-sample" else "in-sample"
 metrics_input <- scoring_rows %>%
@@ -1501,28 +1551,10 @@ plot_F_map <- ggplot(f_df_map, aes(x = Model, y = est, fill = Band)) +
   theme_metrics
 
 
-# Model averaging ---------------------------------------------------------
-# Weights are w_m proportional to exp(-0.5 * OFV_m) (likelihood weights; the
-# AIC variant penalises by the number of random effects, the SSE variant uses
-# the fit error instead). Two things have to happen and neither did before:
-#
-#   1. NORMALISE. sum(Cc * w) without dividing by sum(w) is a weighted SUM, not
-#      an average, so the result had no meaningful scale.
-#   2. SHIFT BEFORE EXPONENTIATING. exp(-0.5 * OFV) with OFV in the hundreds is
-#      denormal, and exactly 0 once OFV passes ~1420, so every weight collapsed
-#      to 0 and MA_* came out 0. Subtracting the maximum log-weight first is
-#      algebraically identical after normalisation (the constant cancels) and
-#      keeps the largest weight at exp(0) = 1.
-#
-# Weights are formed within (ID, time), which holds one row per model, so each
-# patient's models are compared against each other and against nothing else.
-# Models that failed for a patient are simply absent and the remaining weights
-# renormalise over what is there.
-ma_weights <- function(log_w) {
-  z <- log_w - max(log_w, na.rm = TRUE)
-  w <- exp(z)
-  w / sum(w, na.rm = TRUE)
-}
+# Model averaging profiles ------------------------------------------------
+# ma_weights() is defined in the Metrics section above. Weights are formed
+# within (ID, time), which holds one row per model, so each patient's models
+# are compared against each other and against nothing else.
 
 df_final <- m_out_tot %>%
   group_by(ID, time) %>%

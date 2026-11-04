@@ -1531,8 +1531,7 @@ server <- function(input, output, session) {
         p(paste0("Minimum dose per administration achieving ", target_pct,
                  "% fT>", mic_mult, "×MIC (",
                  round(threshold, 2), " mg/L free) at steady state. ",
-                 "Daily dose limit: 6 g/day. ",
-                 "Model average = weighted mean of per-model minimum doses.")),
+                 "Daily dose limit: 6 g/day. ")),
         DTOutput("dose_rec_table")
       )
     })

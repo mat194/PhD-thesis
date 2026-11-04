@@ -13,7 +13,7 @@ models_ceftazidime <- list(
         CL <- THETA_CL_CVVH
       } else {
         CL <- THETA_CL *
-          (eGFR / 73)^THETA_CL_eGFR *
+          (eGFR_CKD_EPI / 73)^THETA_CL_eGFR *
           THETA_CL_HEMAT^HEMAT *
           THETA_CL_TRAUMA^TRAUMA *
           exp(ETA_CL)
@@ -38,7 +38,7 @@ models_ceftazidime <- list(
       THETA_CL_TRAUMA  = 1.99,   
       THETA_V          = 46.8    
     ),
-    covariates = c("eGFR", "CVVH", "HEMAT", "TRAUMA"),
+    covariates = c("eGFR_CKD_EPI", "CVVH", "HEMAT", "TRAUMA"),
     omega = lotri::lotri({ 
       ETA_CL + ETA_V ~     
         c(log((36 / 100)^2 + 1),
@@ -54,10 +54,10 @@ models_ceftazidime <- list(
       centr(0)  <- 0
       periph(0) <- 0
       
-      CL <- (THETA_CL_INT + THETA_CL_CLCR * CLCR_CG) * exp(ETA_CL)
+      CL <- (THETA_CL_INT + THETA_CL_CLCR * CLCR_CG) * exp(ETA_CL)#check units 
       V1 <- THETA_V1 * exp(ETA_V1)
       V2 <- THETA_V2 *
-        (1 + THETA_V2_SEX  * SEX) *
+        (1 + THETA_V2_SEX  * (1 - SEX)) * #sex == 1 male, 0 female
         (1 + THETA_V2_VM * VM) *
         (1 + THETA_V2_CLCR * CLCR_CG)
       Q  <- THETA_Q
@@ -102,7 +102,7 @@ models_ceftazidime <- list(
       centr(0)  <- 0
       periph(0) <- 0
 
-      CL <- (THETA_CL_INT + THETA_CL_MDRD * MDRD) * exp(ETA_CL)
+      CL <- (THETA_CL_INT + THETA_CL_MDRD * eGFR_MDRD) * exp(ETA_CL)
 
       if (VM == 1) {
         TVV1 <- THETA_V1_VENT
@@ -149,7 +149,7 @@ models_ceftazidime <- list(
       THETA_V2_MED    = 13.60    
     ),
     # ADM: reason for admission, 1 = polytrauma, 2 = postoperative, 3 = medical
-    covariates = c("MDRD", "VM", "ADM"),
+    covariates = c("eGFR_MDRD", "VM", "ADM"),
     omega = lotri::lotri({ # $OMEGA of the final model, already variances
       ETA_CL + ETA_V1 + ETA_Q + ETA_V2 ~
         c(0.09,
@@ -167,7 +167,7 @@ models_ceftazidime <- list(
       AUC(0)   <- 0
       centr(0) <- 0
 
-      CL <- THETA_CL * (eGFR / 73.90)^THETA_CL_eGFR * exp(ETA_CL)
+      CL <- THETA_CL * (eGFR_CKD_EPI / 73.90)^THETA_CL_eGFR * exp(ETA_CL)
       V  <- THETA_V * exp(ETA_V)
 
       k10 <- CL / V
@@ -183,9 +183,9 @@ models_ceftazidime <- list(
     theta = c(
       THETA_CL      =  4.45,   
       THETA_CL_eGFR =  0.9,    
-      THETA_V       = 88.0     
+      THETA_V       =  88.0     
     ),
-    covariates = c("eGFR"),
+    covariates = c("eGFR_CKD_EPI"),
     omega = lotri::lotri({ # Table 2 reports IIV as standard deviations
       ETA_CL + ETA_V ~    
         c(0.46^2,

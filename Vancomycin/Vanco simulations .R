@@ -237,7 +237,7 @@ calculate_metrics <- function(data, n_bootstrap = 0, conf_level = 0.95) {
     rRMSE <- sqrt((1 / N) * sum(((data$predicted - data$observed)^2) / (((data$predicted + data$observed) / 2)^2))) * 100
     # Calculate rPE for each observation
     data <- data %>%
-      mutate(rPE = ((predicted - observed) / (observed / 2)) * 100)
+      mutate(rPE = ((predicted - observed) / ((predicted + observed) / 2)) * 100)
     # Calculate MPE (median of rPE)
     MPE <- median(data$rPE, na.rm = TRUE)
     # Calculate MAPE (median of absolute rPE)
