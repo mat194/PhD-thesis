@@ -556,7 +556,12 @@ for (model_name in names(npde_results)) {
   fit <- npde_results[[model_name]]
   if (is.null(fit)) next
   png(file.path(npde_dir, paste0(model_name, ".png")), width = 1000, height = 900, res = 130)
-  plot(fit, main = model_name)
+  # which = "npde": plot()'s own default (no `which`) silently falls back to
+  # "npd" -- the non-decorrelated prediction discrepancy, which treats a
+  # patient's repeated TDM samples as independent and is anti-conservative
+  # for that reason. npde is the decorrelated statistic npde_summary above
+  # already reports via gof.test(); the plot should match it.
+  plot(fit, which = "npde", main = model_name)
   dev.off()
 }
 
